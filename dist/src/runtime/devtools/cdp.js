@@ -1,3 +1,4 @@
+import { compact } from 'es-toolkit';
 import { chromium, } from 'playwright-core';
 import { WebSocket } from 'undici';
 import { sweetLinkDebug } from '../../env';
@@ -117,9 +118,9 @@ export async function fetchDevToolsTabs(devtoolsUrl) {
     if (!Array.isArray(payload)) {
         throw new TypeError('DevTools endpoint returned unexpected payload');
     }
-    return payload.flatMap((entry) => {
+    return compact(payload.map((entry) => {
         if (!entry || typeof entry !== 'object') {
-            return [];
+            return null;
         }
         const record = entry;
         const id = typeof record.id === 'string' ? record.id : null;
@@ -128,10 +129,10 @@ export async function fetchDevToolsTabs(devtoolsUrl) {
         const type = typeof record.type === 'string' ? record.type : undefined;
         const webSocketDebuggerUrl = typeof record.webSocketDebuggerUrl === 'string' ? record.webSocketDebuggerUrl : undefined;
         if (!id || !url) {
-            return [];
+            return null;
         }
-        return [{ id, title, url, type, webSocketDebuggerUrl }];
-    });
+        return { id, title, url, type, webSocketDebuggerUrl };
+    }));
 }
 export async function fetchDevToolsTabsWithRetry(devtoolsUrl, attempts = 5) {
     const ECONNREFUSED_PATTERN = /ECONNREFUSED/;

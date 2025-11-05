@@ -7,10 +7,13 @@
     "sourceMap": true,
     "noEmit": false,
     "allowImportingTsExtensions": false,
+    "moduleResolution": "node",
     "paths": {
       "@sweetlink/shared": ["./shared/src/index.ts"],
       "@sweetlink/shared/node": ["./shared/src/node.ts"],
-      "@sweetlink/shared/env": ["./shared/src/env.ts"]
+      "@sweetlink/shared/env": ["./shared/src/env.ts"],
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
     }
   },
   "include": ["./src/**/*", "./daemon/src/**/*"],

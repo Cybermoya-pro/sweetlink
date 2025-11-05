@@ -1,19 +1,60 @@
 {
   "name": "@sweetlink/cli",
   "version": "0.1.0",
-  "private": true,
+  "description": "Controlled-browser automation CLI for SweetLink sessions.",
+  "license": "MIT",
+  "private": false,
   "type": "module",
+  "homepage": "https://github.com/steipete/sweetlink",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steipete/sweetlink.git"
+  },
+  "bugs": {
+    "url": "https://github.com/steipete/sweetlink/issues"
+  },
+  "keywords": [
+    "sweetlink",
+    "automation",
+    "browser",
+    "devtools",
+    "cli"
+  ],
   "bin": {
-    "sweetlink": "./dist/index.js"
+    "sweetlink": "./dist/src/index.js"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc --project tsconfig.build.json",
     "test": "vitest run --config vitest.config.ts",
-    "lint": "biome lint ./src ./shared/src ./daemon/src ./tests"
+    "lint": "biome lint ./src ./shared/src ./daemon/src ./tests",
+    "prepublishOnly": "pnpm run build && pnpm --filter @sweetlink/shared run build && pnpm --filter @sweetlink/daemon run build"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "main": "./dist/src/index.js",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.16.0"
   },
   "dependencies": {
-    "@sweetlink/shared": "file:./shared",
+    "@sweetlink/shared": "workspace:*",
     "chrome-cookies-secure": "^3.0.0",
     "commander": "^14.0.2",
     "es-toolkit": "^1.41.0",
@@ -28,5 +69,6 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.7"
-  }
+  },
+  "packageManager": "pnpm@10.20.0"
 }

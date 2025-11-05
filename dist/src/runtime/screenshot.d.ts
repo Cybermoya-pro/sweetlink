@@ -1,4 +1,4 @@
-import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetlink/shared';
 import type { CliConfig } from '../types';
 import type { SweetLinkConsoleDump } from './session';
 export interface DevToolsCaptureOptions {
@@ -51,12 +51,15 @@ export type DevToolsRecoveryContext = {
     readonly suppressOutput: boolean;
     readonly logInfo: (...args: unknown[]) => void;
     readonly failureReason?: string | null;
+    readonly appLabel?: string;
 };
 export declare function maybeDescribeScreenshot(prompt: string | undefined, imagePath: string, options?: {
     silent?: boolean;
+    appLabel?: string;
 }): Promise<void>;
 export declare function maybeAnalyzeConsoleWithPrompt(prompt: string | undefined, selector: string, events: SweetLinkConsoleDump[], options?: {
     silent?: boolean;
+    appLabel?: string;
 }): Promise<boolean>;
 export declare function tryHtmlToImageFallback(context: ScreenshotFallbackContext & {
     readonly rendererOverride: SweetLinkScreenshotRenderer;

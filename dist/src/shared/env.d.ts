@@ -1,4 +1,5 @@
 export interface SweetLinkSharedEnv {
+    readonly appLabel: string;
     readonly appUrl: string;
     readonly prodAppUrl: string;
     readonly daemonUrl: string;
@@ -13,6 +14,7 @@ export interface SweetLinkSharedEnv {
     readonly cliDevtoolsUrl: string | null;
     readonly cliChromeProfilePath: string | null;
     readonly cliCookieDebug: boolean;
+    readonly cliOauthScriptPath: string | null;
     readonly debug: boolean;
     readonly cliTestMode: boolean;
 }

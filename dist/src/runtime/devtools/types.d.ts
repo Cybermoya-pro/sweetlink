@@ -1,4 +1,5 @@
 import type { Browser, Page } from 'playwright-core';
+import type { Browser as PuppeteerBrowser, Page as PuppeteerPage } from 'puppeteer';
 export interface SweetLinkBootstrapDiagnostics {
     readyState?: string;
     autoFlag?: boolean;
@@ -28,6 +29,7 @@ export interface DevToolsConfig {
     readonly updatedAt: number;
     readonly targetUrl?: string;
     readonly sessionId?: string;
+    readonly oauthScriptPath?: string | null;
     readonly viewport?: {
         readonly width: number;
         readonly height: number;
@@ -84,4 +86,20 @@ export type TwitterOauthAutoAcceptResult = {
     hasUsernameInput?: boolean;
     hasPasswordInput?: boolean;
 };
+export interface SweetLinkOauthAuthorizeContext {
+    readonly devtoolsUrl: string;
+    readonly sessionUrl: string;
+    readonly fetchTabs: (overrideUrl?: string) => Promise<DevToolsTabEntry[]>;
+    readonly evaluateInDevToolsTab: (targetUrl: string, expression: string) => Promise<unknown>;
+    readonly urlsRoughlyMatch: (candidate: string, target: string) => boolean;
+    readonly connectPuppeteer: (attempts?: number) => Promise<PuppeteerBrowser | null>;
+    readonly resolvePuppeteerPage: (browser: PuppeteerBrowser, targetUrl: string) => Promise<PuppeteerPage | null>;
+    readonly navigatePuppeteerPage: (page: PuppeteerPage, targetUrl: string, attempts?: number) => Promise<boolean>;
+    readonly waitForPageReady: (page: PuppeteerPage) => Promise<void>;
+    readonly delay: (milliseconds: number) => Promise<void>;
+    readonly logDebugError: (message: string, error?: unknown) => void;
+}
+export interface SweetLinkOauthAutomation {
+    authorize(context: SweetLinkOauthAuthorizeContext): Promise<TwitterOauthAutoAcceptResult> | TwitterOauthAutoAcceptResult;
+}
 //# sourceMappingURL=types.d.ts.map

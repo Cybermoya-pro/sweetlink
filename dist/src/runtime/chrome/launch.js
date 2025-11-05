@@ -30,6 +30,7 @@ export async function launchControlledChrome(target, options) {
         '--no-default-browser-check',
         '--disable-background-networking',
         '--disable-renderer-backgrounding',
+        '--allow-insecure-localhost',
         '--new-window',
         target,
     ];

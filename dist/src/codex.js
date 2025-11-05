@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { describeAppForPrompt } from './util/app-label';
 import { extractEventMessage, isErrnoException } from './util/errors';
 const CODEX_ARGS = ['exec', '--yolo', '--skip-git-repo-check'];
 /** Invokes the Codex CLI with optional stdin. */
@@ -40,7 +41,8 @@ export async function analyzeConsoleWithCodex(selector, prompt, events, options 
             return `[${timestamp}] ${event.level}${suffix}`;
         })
         : ['(no console events were captured after the click)'];
-    const combinedPrompt = `You are analyzing console output from a Sweetistics analytics website immediately after triggering a click on selector "${selector}". ` +
+    const appDescription = describeAppForPrompt(options.appLabel);
+    const combinedPrompt = `You are analyzing console output from ${appDescription} immediately after triggering a click on selector "${selector}". ` +
         'Review the log lines below (most recent last) and answer the agent’s question.\n\n' +
         `Console output:\n${lines.join('\n')}\n\nQuestion: ${question}`;
     if (!options.silent) {

@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { runCodexImagePrompt, runCodexTextPrompt } from '../codex';
 import { fetchJson } from '../http';
+import { describeAppForPrompt } from '../util/app-label';
 import { extractEventMessage, isErrnoException } from '../util/errors';
 import { formatConsoleArg } from './devtools';
 export async function maybeDescribeScreenshot(prompt, imagePath, options = {}) {
@@ -8,8 +9,8 @@ export async function maybeDescribeScreenshot(prompt, imagePath, options = {}) {
     if (!question) {
         return;
     }
-    const combinedPrompt = 'You are analyzing a screenshot of a Sweetistics analytics website (treat it like a typical product dashboard). Inspect the image carefully before answering.\nQuestion: ' +
-        question;
+    const appDescription = describeAppForPrompt(options.appLabel);
+    const combinedPrompt = `You are analyzing a screenshot from ${appDescription} (treat it like a typical product dashboard). Inspect the image carefully before answering.\nQuestion: ${question}`;
     if (!options.silent) {
         console.log(`Asking Codex about screenshot: ${question}`);
     }
@@ -39,7 +40,8 @@ export async function maybeAnalyzeConsoleWithPrompt(prompt, selector, events, op
             return `[${timestamp}] ${event.level}${suffix}`;
         })
         : ['(no console events were captured after the click)'];
-    const combinedPrompt = `You are analyzing console output from a Sweetistics analytics website immediately after triggering a click on selector "${selector}". ` +
+    const appDescription = describeAppForPrompt(options.appLabel);
+    const combinedPrompt = `You are analyzing console output from ${appDescription} immediately after triggering a click on selector "${selector}". ` +
         'Review the log lines below (most recent last) and answer the agent’s question.\n\n' +
         `Console output:\n${lines.join('\n')}\n\nQuestion: ${question}`;
     if (!options.silent) {
@@ -79,7 +81,7 @@ export async function tryHtmlToImageFallback(context) {
         return { handled: false, fallbackResult };
     }
     await persistScreenshotResult(outputPath, fallbackResult, { silent: suppressOutput });
-    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
     return { handled: true };
 }
 export async function attemptDevToolsCapture(options) {
@@ -207,7 +209,7 @@ export async function tryDevToolsRecovery(context) {
     if (!suppressOutput) {
         console.log(`Saved screenshot to ${outputPath} (${devtoolsFallback.width}x${devtoolsFallback.height}, ${devtoolsFallback.sizeKb.toFixed(1)} KB, method: ${devtoolsFallback.renderer}).`);
     }
-    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: context.appLabel });
     return true;
 }
 export async function persistScreenshotResult(outputPath, result, options = {}) {

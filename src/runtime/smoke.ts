@@ -89,14 +89,23 @@ export const SMOKE_ROUTE_PRESETS: Record<string, string[]> = {
   ...configuredPresets,
 };
 
+const getPresetRoutes = (name: string): string[] => normalizeRouteList(SMOKE_ROUTE_PRESETS[name]);
+
 const configuredDefaults = normalizeRouteList(fileConfig.smokeRoutes?.defaults ?? []);
 
-const mainPresetRoutes = SMOKE_ROUTE_PRESETS.main ?? [];
-const settingsPresetRoutes = SMOKE_ROUTE_PRESETS.settings ?? [];
-const fallbackDefaults = [
-  ...((mainPresetRoutes.length > 0 ? mainPresetRoutes : builtinSmokePresets.main) as string[]),
-  ...((settingsPresetRoutes.length > 0 ? settingsPresetRoutes : builtinSmokePresets.settings) as string[]),
-];
+const mainPresetRoutes: string[] = getPresetRoutes('main');
+const settingsPresetRoutes: string[] = getPresetRoutes('settings');
+const fallbackDefaults: string[] = [];
+if (mainPresetRoutes.length > 0) {
+  fallbackDefaults.push(...mainPresetRoutes);
+} else {
+  fallbackDefaults.push(...(builtinSmokePresets.main ?? []));
+}
+if (settingsPresetRoutes.length > 0) {
+  fallbackDefaults.push(...settingsPresetRoutes);
+} else {
+  fallbackDefaults.push(...(builtinSmokePresets.settings ?? []));
+}
 
 export const DEFAULT_SMOKE_ROUTES = configuredDefaults.length > 0 ? configuredDefaults : fallbackDefaults;
 

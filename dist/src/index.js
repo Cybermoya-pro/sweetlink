@@ -3,9 +3,9 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSweetLinkCommandId, } from '@sweetistics/sweetlink-shared';
+import { createSweetLinkCommandId, } from '@sweetlink/shared';
 import { Command, CommanderError, Option } from 'commander';
-import { uniq } from 'es-toolkit';
+import { compact, uniq } from 'es-toolkit';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
 import { readRootProgramOptions, resolveConfig } from './core/config';
@@ -16,7 +16,7 @@ import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env';
 import { fetchJson } from './http';
 import { collectPuppeteerDiagnostics, focusControlledChromePage, launchChrome, launchControlledChrome, prepareChromeLaunch, reuseExistingControlledChrome, signalSweetLinkBootstrap, waitForSweetLinkSession, } from './runtime/chrome';
 import { buildCookieOrigins, collectChromeCookies, collectChromeCookiesForDomains, normalizePuppeteerCookie, } from './runtime/cookies';
-import { ensureDevStackRunning as ensureDevStackRunningRuntime, isAppReachable as isAppReachableRuntime, isDatabaseReachable as isDatabaseReachableRuntime, maybeInstallMkcertDispatcher, } from './runtime/devstack';
+import { ensureDevStackRunning as ensureDevStackRunningRuntime, isAppReachable as isAppReachableRuntime, maybeInstallMkcertDispatcher, } from './runtime/devstack';
 import { attemptTwitterOauthAutoAccept, collectBootstrapDiagnostics, connectToDevTools, createEmptyDevToolsState, createNetworkEntryFromRequest, DEVTOOLS_CONSOLE_LIMIT, DEVTOOLS_NETWORK_LIMIT, DEVTOOLS_STATE_PATH, deriveDevtoolsLinkInfo, diagnosticsContainBlockingIssues, ensureBackgroundDevtoolsListener, fetchDevToolsTabs, formatConsoleArg, loadDevToolsConfig, loadDevToolsState, logBootstrapDiagnostics, saveDevToolsConfig, saveDevToolsState, serializeConsoleMessage, trimBuffer, } from './runtime/devtools';
 import { attemptDevToolsCapture, maybeDescribeScreenshot, persistScreenshotResult, tryDevToolsRecovery, tryHtmlToImageFallback, } from './runtime/screenshot';
 import { renderCommandResult } from './runtime/scripts';
@@ -25,6 +25,7 @@ import { buildSmokeRouteUrl, clearSmokeProgress, consoleEventIndicatesAuthIssue,
 import { buildWaitCandidateUrls, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url';
 import { buildScreenshotHooks } from './screenshot-hooks';
 import { fetchCliToken } from './token';
+import { describeAppForPrompt, formatAppLabel } from './util/app-label';
 import { extractEventMessage, isErrnoException, logDebugError } from './util/errors';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,10 +63,12 @@ maybeInstallMkcertDispatcher();
 const LOOSE_PATH_SUFFIXES = new Set(['home', 'index', 'overview']);
 const { config: fileConfig } = loadSweetLinkFileConfig();
 const { appUrl: envAppUrl, daemonUrl: envDaemonUrl, localAdminApiKey, adminApiKey: sharedAdminApiKey, prodAppUrl: envProdAppUrl, } = sweetLinkEnv;
+const defaultAppLabel = formatAppLabel(fileConfig.appLabel ?? sweetLinkEnv.appLabel);
 const defaultAppUrl = deriveDefaultAppUrl(envAppUrl, fileConfig);
 const defaultProdAppUrl = fileConfig.prodUrl ?? envProdAppUrl;
 const defaultDaemonUrl = fileConfig.daemonUrl ?? envDaemonUrl;
 const defaultAdminKey = fileConfig.adminKey ?? localAdminApiKey ?? sharedAdminApiKey ?? '';
+const defaultHealthPaths = fileConfig.healthChecks?.paths ?? null;
 const LOCAL_DEFAULT_APP_URL = 'http://localhost:3000';
 function deriveDefaultAppUrl(envUrl, config) {
     if (config.appUrl) {
@@ -95,10 +98,12 @@ function parseCliPort(value) {
 }
 program
     .option('-a, --app-url <url>', 'Application base URL for SweetLink commands', defaultAppUrl)
+    .option('--app-label <label>', 'Friendly name for your application (used in help output)', defaultAppLabel)
     .option('--url <url>', 'Alias for --app-url')
     .addOption(new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort))
     .option('-d, --daemon-url <url>', 'SweetLink daemon base URL', defaultDaemonUrl)
-    .option('-k, --admin-key <key>', 'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)', defaultAdminKey);
+    .option('-k, --admin-key <key>', 'Optional admin API key (defaults to SWEETLINK_LOCAL_ADMIN_API_KEY or SWEETLINK_ADMIN_API_KEY env; falls back to legacy SWEETISTICS_* keys)', defaultAdminKey)
+    .option('--oauth-script <path>', 'Absolute or relative path to an OAuth automation script (ESM module). Overrides config/env defaults.');
 program
     .command('sessions')
     .description('List active SweetLink sessions')
@@ -126,7 +131,7 @@ program
     }
     if (sessions.length === 0) {
         console.log('No active SweetLink sessions.');
-        console.log('Hint: run `pnpm sweetlink open --controlled --path timeline/home` to launch an authenticated tab automatically.');
+        console.log('Hint: run `pnpm sweetlink open --controlled --path /` to launch an authenticated tab automatically.');
         return;
     }
     const now = Date.now();
@@ -162,10 +167,10 @@ program
 program
     .command('cookies')
     .description('Dump Chrome cookies for one or more domains or origins')
-    .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://sweetistics.com)')
+    .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://example.com)')
     .option('--json', 'Output JSON instead of a human-readable list', false)
     .action(async (domains, options) => {
-    const uniqueDomains = uniq(domains.map((domain) => domain.trim()).filter(Boolean));
+    const uniqueDomains = uniq(compact(domains.map((domain) => domain.trim())));
     if (uniqueDomains.length === 0) {
         console.log('No domains provided; nothing to collect.');
         return;
@@ -228,7 +233,7 @@ program
 });
 program
     .command('open')
-    .description('Open Sweetistics in Chrome with SweetLink auto-enabled')
+    .description(`Open ${defaultAppLabel} in Chrome with SweetLink auto-enabled`)
     .option('-e, --env <env>', 'Environment to open (dev or prod)', 'dev')
     .option('-p, --path <path>', 'Optional path to append (default "")', '')
     .option('--url <url>', 'Explicit URL to open (overrides --path and --env)')
@@ -256,12 +261,16 @@ async function runOpenCommand(options, command, rootProgram) {
         console.log('--foreground is ignored in headless mode.');
     }
     if (context.env === 'dev') {
-        await ensureDevStackRunningRuntime(context.targetUrl, { repoRoot });
+        await ensureDevStackRunningRuntime(context.targetUrl, {
+            repoRoot,
+            healthPaths: context.healthCheckPaths ?? undefined,
+            server: context.serverConfig ?? undefined,
+        });
     }
     const waitToken = await fetchWaitTokenIfNeeded(context);
-    const reachability = await checkOpenCommandReachability(context);
-    if (!reachability.appReachable || !reachability.dbReachable) {
-        logOpenCommandReachabilityErrors(context, reachability);
+    const appReachable = await checkOpenCommandReachability(context);
+    if (!appReachable) {
+        logOpenCommandReachabilityErrors(context);
         process.exitCode = 1;
         return;
     }
@@ -281,6 +290,7 @@ function buildOpenCommandContext(options, command, rootProgram) {
     const baseUrl = env === 'prod' ? productionBaseUrl : developmentBaseUrl;
     const explicitTarget = resolveExplicitTargetUrl(options.url);
     const targetUrl = explicitTarget ?? buildOpenCommandTargetUrl(baseUrl, options.path);
+    const serverConfig = config.servers[env] ?? null;
     const preferredPort = typeof options.devtoolsPort === 'number' && Number.isFinite(options.devtoolsPort)
         ? options.devtoolsPort
         : undefined;
@@ -290,6 +300,7 @@ function buildOpenCommandContext(options, command, rootProgram) {
     const foreground = Boolean(options.foreground);
     return {
         config,
+        appLabel: config.appLabel,
         env,
         controlled,
         preferredPort,
@@ -300,6 +311,9 @@ function buildOpenCommandContext(options, command, rootProgram) {
         enableDevtools,
         headless,
         foreground,
+        healthCheckPaths: defaultHealthPaths,
+        oauthScriptPath: config.oauthScriptPath,
+        serverConfig,
     };
 }
 function normalizeOpenCommandEnvironment(value) {
@@ -377,17 +391,10 @@ async function fetchWaitTokenIfNeeded(context) {
     }
 }
 async function checkOpenCommandReachability(context) {
-    const appReachable = await isAppReachableRuntime(context.targetUrl.origin);
-    const dbReachable = context.env === 'dev' ? await isDatabaseReachableRuntime() : true;
-    return { appReachable, dbReachable };
+    return await isAppReachableRuntime(context.targetUrl.origin, context.healthCheckPaths ?? undefined);
 }
-function logOpenCommandReachabilityErrors(context, reachability) {
-    if (!reachability.appReachable) {
-        console.error(`${context.targetUrl.origin} did not respond. Start the web app with "pnpm dev" from the Sweetistics repository root and retry.`);
-    }
-    if (!reachability.dbReachable) {
-        console.error('Local Postgres is unreachable. Run `pnpm run dev` (or ensure Docker/local Postgres is online) before continuing.');
-    }
+function logOpenCommandReachabilityErrors(context) {
+    console.error(`${context.targetUrl.origin} did not respond. Start ${describeAppForPrompt(context.appLabel)} and retry.`);
 }
 async function handleControlledOpen(context, waitToken) {
     const reuseResult = context.headless
@@ -414,6 +421,7 @@ async function handleControlledReuse(context, waitToken, reuseResult) {
             const oauthAttempt = await attemptTwitterOauthAutoAccept({
                 devtoolsUrl: reuseResult.devtoolsUrl,
                 sessionUrl: context.targetUrlString,
+                scriptPath: context.oauthScriptPath,
             });
             if (oauthAttempt.handled) {
                 console.log(`Automatically approved the OAuth prompt via ${oauthAttempt.action ?? 'click'}${oauthAttempt.clickedText ? ` (${oauthAttempt.clickedText})` : ''}.`);
@@ -480,6 +488,7 @@ async function handleControlledLaunch(context, waitToken) {
             const oauthAttempt = await attemptTwitterOauthAutoAccept({
                 devtoolsUrl: info.devtoolsUrl,
                 sessionUrl: context.targetUrlString,
+                scriptPath: context.oauthScriptPath,
             });
             if (oauthAttempt.handled) {
                 console.log(`Automatically approved the OAuth prompt via ${oauthAttempt.action ?? 'click'}${oauthAttempt.clickedText ? ` (${oauthAttempt.clickedText})` : ''}.`);
@@ -689,7 +698,7 @@ program
         });
         if (devtoolsCaptureResult) {
             logInfo(`Saved screenshot to ${outputPath} (${devtoolsCaptureResult.width}x${devtoolsCaptureResult.height}, ${devtoolsCaptureResult.sizeKb.toFixed(1)} KB, method: ${devtoolsCaptureResult.renderer}).`);
-            await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+            await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
             return;
         }
         if (method === 'puppeteer') {
@@ -772,6 +781,7 @@ program
                 prompt,
                 suppressOutput,
                 logInfo,
+                appLabel: config.appLabel,
                 failureReason: fallbackError ?? result.error,
             });
             if (recovered) {
@@ -791,6 +801,7 @@ program
             prompt,
             suppressOutput,
             logInfo,
+            appLabel: config.appLabel,
             failureReason: result.error,
         });
         if (recovered) {
@@ -801,7 +812,7 @@ program
         return;
     }
     await persistScreenshotResult(outputPath, result, { silent: suppressOutput });
-    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
 });
 program
     .command('selectors <sessionId>')
@@ -1407,20 +1418,20 @@ function urlsRoughlyMatch(a, b) {
     return suffixSegmentsAllowed(remainderA) && suffixSegmentsAllowed(remainderB);
 }
 async function devtoolsAuthorize(options, command) {
-    const config = await loadDevToolsConfig();
-    if (!config?.devtoolsUrl) {
+    const devtoolsConfig = await loadDevToolsConfig();
+    if (!devtoolsConfig?.devtoolsUrl) {
         console.log('No DevTools session detected. Launch Chrome with `pnpm sweetlink open --controlled` first.');
         return;
     }
+    const cliConfig = resolveConfig(command);
     let sessionUrl = options.url?.trim() || undefined;
     if (!sessionUrl) {
-        sessionUrl = config.targetUrl ?? undefined;
+        sessionUrl = devtoolsConfig.targetUrl ?? undefined;
     }
-    if (!sessionUrl && config.sessionId) {
+    if (!sessionUrl && devtoolsConfig.sessionId) {
         try {
-            const cliConfig = resolveConfig(command);
             const token = await fetchCliToken(cliConfig);
-            const summary = await getSessionSummaryById(cliConfig, token, config.sessionId);
+            const summary = await getSessionSummaryById(cliConfig, token, devtoolsConfig.sessionId);
             sessionUrl = summary?.url ?? sessionUrl;
         }
         catch {
@@ -1429,7 +1440,7 @@ async function devtoolsAuthorize(options, command) {
     }
     if (!sessionUrl) {
         try {
-            const tabs = await fetchDevToolsTabs(config.devtoolsUrl);
+            const tabs = await fetchDevToolsTabs(devtoolsConfig.devtoolsUrl);
             const oauthTab = tabs.find((tab) => {
                 if (!tab.url) {
                     return false;
@@ -1454,7 +1465,11 @@ async function devtoolsAuthorize(options, command) {
         return;
     }
     try {
-        const result = await attemptTwitterOauthAutoAccept({ devtoolsUrl: config.devtoolsUrl, sessionUrl });
+        const result = await attemptTwitterOauthAutoAccept({
+            devtoolsUrl: devtoolsConfig.devtoolsUrl,
+            sessionUrl,
+            scriptPath: cliConfig.oauthScriptPath,
+        });
         if (result.handled) {
             console.log(`Authorize prompt handled via ${result.action ?? 'click'}${result.clickedText ? ` (${result.clickedText})` : ''}.`);
         }

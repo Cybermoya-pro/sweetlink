@@ -1,5 +1,5 @@
-import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '@sweetistics/sweetlink-shared';
-import { type SweetLinkCommandResult } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '@sweetlink/shared';
+import { type SweetLinkCommandResult } from '@sweetlink/shared';
 import type { CliConfig } from '../types';
 export interface SweetLinkSessionSummaryResponse {
     readonly sessions: Array<{

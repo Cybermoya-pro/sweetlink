@@ -1,4 +1,4 @@
-import { sweetLinkEnv as sharedSweetLinkEnv } from '@sweetistics/sweetlink-shared/env';
+import { sweetLinkEnv as sharedSweetLinkEnv } from '@sweetlink/shared/env';
 export const sweetLinkEnv = sharedSweetLinkEnv;
 export const sweetLinkDebug = sweetLinkEnv.debug;
 export const sweetLinkCliTestMode = sweetLinkEnv.cliTestMode;
@@ -10,6 +10,7 @@ export function readCliEnv() {
         devtoolsUrl: sharedSweetLinkEnv.cliDevtoolsUrl,
         chromeProfilePath: sharedSweetLinkEnv.cliChromeProfilePath,
         cookieDebug: sharedSweetLinkEnv.cliCookieDebug,
+        oauthScriptPath: sharedSweetLinkEnv.cliOauthScriptPath,
     };
 }
 export const cliEnv = readCliEnv();

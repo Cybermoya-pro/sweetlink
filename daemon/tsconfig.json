@@ -9,7 +9,8 @@
     "allowImportingTsExtensions": false,
     "paths": {
       "@sweetlink/shared": ["../shared/src/index.ts"],
-      "@sweetlink/shared/node": ["../shared/src/node.ts"]
+      "@sweetlink/shared/node": ["../shared/src/node.ts"],
+      "@sweetlink/shared/env": ["../shared/src/env.ts"]
     }
   },
   "include": ["./src/**/*"],

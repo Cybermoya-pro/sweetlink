@@ -1,14 +1,45 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { compact, uniq } from 'es-toolkit';
+import { loadSweetLinkFileConfig } from '../core/config-file';
 import { sweetLinkDebug } from '../env';
 import { describeUnknown, isErrnoException } from '../util/errors';
 import { delay } from '../util/time';
 import { collectBootstrapDiagnostics, diagnosticsContainBlockingIssues, evaluateInDevToolsTab, } from './devtools';
 import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session';
 import { buildWaitCandidateUrls, urlsRoughlyMatch } from './url';
+const normalizeRouteList = (input) => {
+    if (typeof input === 'string') {
+        const trimmed = input.trim();
+        return trimmed.length > 0 ? [trimmed] : [];
+    }
+    if (!Array.isArray(input)) {
+        return [];
+    }
+    return compact(input.map((route) => {
+        if (typeof route !== 'string') {
+            return null;
+        }
+        const trimmed = route.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    }));
+};
+const normalizeSmokePresets = (presets) => {
+    if (!presets || typeof presets !== 'object') {
+        return {};
+    }
+    const result = {};
+    for (const [key, value] of Object.entries(presets)) {
+        const routes = normalizeRouteList(value);
+        if (routes.length > 0) {
+            result[key] = routes;
+        }
+    }
+    return result;
+};
 const SMOKE_PROGRESS_PATH = path.join(os.homedir(), '.sweetlink', 'smoke-progress.json');
-export const SMOKE_ROUTE_PRESETS = {
+const builtinSmokePresets = {
     main: ['timeline/home', 'insights', 'search', '', 'pulse'],
     settings: [
         'settings/account',
@@ -24,39 +55,44 @@ export const SMOKE_ROUTE_PRESETS = {
     'billing-only': ['settings/billing'],
     'pulse-only': ['pulse'],
 };
-const settingsPreset = [...SMOKE_ROUTE_PRESETS.settings];
-const mainPreset = [...SMOKE_ROUTE_PRESETS.main];
-export const DEFAULT_SMOKE_ROUTES = [...mainPreset, ...settingsPreset];
+const { config: fileConfig } = loadSweetLinkFileConfig();
+const configuredPresets = normalizeSmokePresets(fileConfig.smokeRoutes?.presets);
+export const SMOKE_ROUTE_PRESETS = {
+    ...builtinSmokePresets,
+    ...configuredPresets,
+};
+const getPresetRoutes = (name) => normalizeRouteList(SMOKE_ROUTE_PRESETS[name]);
+const configuredDefaults = normalizeRouteList(fileConfig.smokeRoutes?.defaults ?? []);
+const mainPresetRoutes = getPresetRoutes('main');
+const settingsPresetRoutes = getPresetRoutes('settings');
+const fallbackDefaults = [];
+if (mainPresetRoutes.length > 0) {
+    fallbackDefaults.push(...mainPresetRoutes);
+}
+else {
+    fallbackDefaults.push(...(builtinSmokePresets.main ?? []));
+}
+if (settingsPresetRoutes.length > 0) {
+    fallbackDefaults.push(...settingsPresetRoutes);
+}
+else {
+    fallbackDefaults.push(...(builtinSmokePresets.settings ?? []));
+}
+export const DEFAULT_SMOKE_ROUTES = configuredDefaults.length > 0 ? configuredDefaults : fallbackDefaults;
 export const deriveSmokeRoutes = (raw, defaults) => {
     if (!raw || raw.trim().length === 0) {
         return [...defaults];
     }
-    const segments = raw
-        .split(',')
-        .map((segment) => segment.trim())
-        .filter(Boolean);
+    const segments = compact(raw.split(',').map((segment) => segment.trim()));
     if (segments.length === 0) {
         return [...defaults];
     }
-    const expanded = [];
-    for (const segment of segments) {
+    const expanded = segments.flatMap((segment) => {
         const candidatePreset = SMOKE_ROUTE_PRESETS[segment.toLowerCase()];
-        if (Array.isArray(candidatePreset)) {
-            expanded.push(...candidatePreset);
-            continue;
-        }
-        expanded.push(segment);
-    }
-    const seen = new Set();
-    const unique = [];
-    for (const route of expanded) {
-        if (seen.has(route)) {
-            continue;
-        }
-        seen.add(route);
-        unique.push(route);
-    }
-    return unique.length > 0 ? unique : [...defaults];
+        return Array.isArray(candidatePreset) ? candidatePreset : [segment];
+    });
+    const uniqueRoutes = uniq(expanded);
+    return uniqueRoutes.length > 0 ? uniqueRoutes : [...defaults];
 };
 const normalizeRoutePath = (route) => {
     if (!route) {

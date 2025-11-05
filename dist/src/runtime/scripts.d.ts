@@ -1,4 +1,4 @@
-import type { SweetLinkCommandResult } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkCommandResult } from '@sweetlink/shared';
 export interface RunJsOptions {
     code?: string[];
     file?: string;

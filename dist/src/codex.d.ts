@@ -6,5 +6,6 @@ export declare function runCodexTextPrompt(prompt: string): Promise<number>;
 /** Helper for summarising console dumps via Codex. */
 export declare function analyzeConsoleWithCodex(selector: string, prompt: string, events: SweetLinkConsoleDump[], options?: {
     silent?: boolean;
+    appLabel?: string;
 }): Promise<boolean>;
 //# sourceMappingURL=codex.d.ts.map

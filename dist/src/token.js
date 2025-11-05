@@ -1,6 +1,7 @@
-import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '@sweetistics/sweetlink-shared';
-import { resolveSweetLinkSecret } from '@sweetistics/sweetlink-shared/node';
+import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '@sweetlink/shared';
+import { resolveSweetLinkSecret } from '@sweetlink/shared/node';
 import { fetchJson } from './http';
+import { describeAppForPrompt } from './util/app-label';
 import { describeUnknown } from './util/errors';
 let cachedCliToken = null;
 export function resetCliTokenCache() {
@@ -46,8 +47,9 @@ export async function fetchCliToken(config) {
     }
     catch (error) {
         const detail = error instanceof Error ? error.message : describeUnknown(error);
+        const targetDescription = describeAppForPrompt(config.appLabel);
         const hint = config.adminApiKey
-            ? 'Check that your admin key is valid or the Sweetistics dev server is running.'
+            ? `Check that your admin key is valid or ensure ${targetDescription} is running.`
             : 'Provide --admin-key or start the SweetLink daemon once (pnpm sweetlink) to generate the shared secret.';
         throw new Error(`Unable to resolve SweetLink CLI token. Reason: ${detail}. ${hint}`);
     }

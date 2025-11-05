@@ -1,6 +1,9 @@
 import type { TwitterOauthAutoAcceptResult } from './types';
-export declare function attemptTwitterOauthAutoAccept(params: {
+interface AttemptOauthAutomationParameters {
     devtoolsUrl: string;
     sessionUrl: string;
-}): Promise<TwitterOauthAutoAcceptResult>;
+    scriptPath: string | null;
+}
+export declare function attemptTwitterOauthAutoAccept({ devtoolsUrl, sessionUrl, scriptPath, }: AttemptOauthAutomationParameters): Promise<TwitterOauthAutoAcceptResult>;
+export {};
 //# sourceMappingURL=oauth.d.ts.map

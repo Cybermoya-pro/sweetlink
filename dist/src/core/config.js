@@ -1,4 +1,6 @@
+import path from 'node:path';
 import { sweetLinkEnv } from '../env';
+import { formatAppLabel, normalizeAppLabel } from '../util/app-label';
 import { loadSweetLinkFileConfig } from './config-file';
 import { readCommandOptions } from './env';
 const normalizeUrlOption = (value, fallback) => {
@@ -18,11 +20,16 @@ const normalizeAdminKey = (value) => {
 export const readRootProgramOptions = (command) => {
     const rawOptions = readCommandOptions(command);
     const { config } = loadSweetLinkFileConfig();
-    const optionUrl = typeof rawOptions.appUrl === 'string'
-        ? rawOptions.appUrl
-        : typeof rawOptions.url === 'string'
-            ? rawOptions.url
-            : undefined;
+    let optionUrl;
+    if (typeof rawOptions.appUrl === 'string') {
+        optionUrl = rawOptions.appUrl;
+    }
+    else if (typeof rawOptions.url === 'string') {
+        optionUrl = rawOptions.url;
+    }
+    else {
+        optionUrl = undefined;
+    }
     const optionPort = normalizePort(rawOptions.port);
     const configPort = typeof config.port === 'number' ? config.port : null;
     const fallbackAppUrl = resolveDefaultAppUrl({
@@ -33,20 +40,49 @@ export const readRootProgramOptions = (command) => {
     });
     const fallbackDaemonUrl = config.daemonUrl ?? sweetLinkEnv.daemonUrl;
     const fallbackAdminKey = rawOptions.adminKey ?? config.adminKey ?? sweetLinkEnv.localAdminApiKey ?? sweetLinkEnv.adminApiKey ?? null;
+    let optionOauthScriptPath = null;
+    if (typeof rawOptions.oauthScript === 'string') {
+        const trimmed = rawOptions.oauthScript.trim();
+        if (trimmed.length > 0) {
+            optionOauthScriptPath = resolveCliPath(trimmed);
+        }
+    }
+    const fallbackOauthScriptPath = optionOauthScriptPath ??
+        config.oauthScript ??
+        (sweetLinkEnv.cliOauthScriptPath ? resolveCliPath(sweetLinkEnv.cliOauthScriptPath) : null);
+    const optionLabel = normalizeAppLabel(rawOptions.appLabel);
+    const fallbackAppLabel = formatAppLabel(config.appLabel ?? sweetLinkEnv.appLabel);
+    const servers = (config.servers ?? []).map((server) => ({
+        env: server.env,
+        start: server.start ?? null,
+        check: server.check ?? null,
+        cwd: server.cwd ?? null,
+        timeoutMs: typeof server.timeoutMs === 'number' ? server.timeoutMs : null,
+    }));
     return {
         appUrl: normalizeUrlOption(optionUrl, fallbackAppUrl),
         daemonUrl: normalizeUrlOption(rawOptions.daemonUrl, fallbackDaemonUrl),
         adminKey: normalizeAdminKey(fallbackAdminKey),
+        oauthScriptPath: fallbackOauthScriptPath,
+        appLabel: optionLabel ?? fallbackAppLabel,
+        servers,
     };
 };
 /** Extracts SweetLink CLI configuration (app/daemon URLs and admin key). */
 export function resolveConfig(command) {
     const parent = command.parent ?? command;
     const options = readRootProgramOptions(parent);
+    const serversByEnv = {};
+    for (const server of options.servers) {
+        serversByEnv[server.env] = server;
+    }
     return {
+        appLabel: options.appLabel,
         adminApiKey: options.adminKey,
         appBaseUrl: options.appUrl,
         daemonBaseUrl: options.daemonUrl,
+        oauthScriptPath: options.oauthScriptPath,
+        servers: serversByEnv,
     };
 }
 const LOCAL_DEFAULT_URL = 'http://localhost:3000';
@@ -87,4 +123,10 @@ function normalizePort(value) {
     }
     return null;
 }
+const resolveCliPath = (candidate) => {
+    if (path.isAbsolute(candidate)) {
+        return candidate;
+    }
+    return path.resolve(process.cwd(), candidate);
+};
 //# sourceMappingURL=config.js.map

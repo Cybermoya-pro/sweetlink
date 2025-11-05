@@ -63,7 +63,10 @@ async function reportConsoleAfterClick(params) {
             : events.slice(-POST_CLICK_CONSOLE_LIMIT);
         const recent = newEvents.slice(-POST_CLICK_CONSOLE_LIMIT);
         if (params.prompt) {
-            const handled = await analyzeConsoleWithCodex(params.selector, params.prompt, recent, { silent: true });
+            const handled = await analyzeConsoleWithCodex(params.selector, params.prompt, recent, {
+                silent: true,
+                appLabel: params.config.appLabel,
+            });
             if (handled) {
                 return;
             }

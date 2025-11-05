@@ -1,4 +1,4 @@
-import type { SweetLinkSharedEnv } from '@sweetistics/sweetlink-shared/env';
+import type { SweetLinkSharedEnv } from '@sweetlink/shared/env';
 export declare const sweetLinkEnv: SweetLinkSharedEnv;
 export declare const sweetLinkDebug: boolean;
 export declare const sweetLinkCliTestMode: boolean;
@@ -9,6 +9,7 @@ export interface SweetLinkCliEnv {
     readonly devtoolsUrl: string | null;
     readonly chromeProfilePath: string | null;
     readonly cookieDebug: boolean;
+    readonly oauthScriptPath: string | null;
 }
 export declare function readCliEnv(): SweetLinkCliEnv;
 export declare const cliEnv: SweetLinkCliEnv;
