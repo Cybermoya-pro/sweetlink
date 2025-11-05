@@ -1,3 +1,4 @@
+import { loadSweetLinkFileConfig, type SweetLinkCookieMapping } from '../core/config-file';
 import { cliEnv } from '../env';
 import { describeUnknown } from '../util/errors';
 
@@ -85,9 +86,15 @@ export async function collectChromeCookiesForDomains(
       continue;
     }
     const domain = domainCandidate;
-    const origins = normalizeDomainToOrigins(domain);
+    const origins = new Set<string>(normalizeDomainToOrigins(domain));
+    const hostCandidate = extractHostCandidate(domain);
+    if (hostCandidate) {
+      for (const extra of resolveConfiguredCookieOrigins(hostCandidate)) {
+        origins.add(extra);
+      }
+    }
     const collected = new Map<string, PuppeteerCookieParam>();
-    for (const originCandidate of origins) {
+    for (const originCandidate of origins.values()) {
       if (!originCandidate) {
         continue;
       }
@@ -101,7 +108,8 @@ export async function collectChromeCookiesForDomains(
         targetBaseUrl: new URL(origin),
       });
     }
-    const targetCandidate = origins.length > 0 ? origins[0] : domain;
+    const targetIterator = origins.values().next();
+    const targetCandidate = targetIterator.done ? domain : targetIterator.value;
     const targetBase = targetCandidate ? tryParseUrl(targetCandidate) : null;
     if (targetBase) {
       pruneIncompatibleCookies(targetBase, collected);
@@ -116,27 +124,12 @@ export async function collectChromeCookiesForDomains(
 export function buildCookieOrigins(targetUrl: string): string[] {
   const base = new URL(targetUrl);
   const origins = new Set<string>([base.origin]);
-  const host = base.hostname;
-  const isLocalTarget = host === 'localhost' || host === '127.0.0.1';
-  const normalizedHost = host.toLowerCase();
-  const isSweetisticsHost =
-    normalizedHost === 'sweetistics.com' ||
-    normalizedHost === 'www.sweetistics.com' ||
-    normalizedHost.endsWith('.sweetistics.com');
+  const host = base.hostname.toLowerCase();
 
-  for (const origin of ['https://twitter.com', 'https://x.com', 'https://api.twitter.com']) {
+  for (const origin of resolveConfiguredCookieOrigins(host)) {
     origins.add(origin);
   }
-  if (isLocalTarget || isSweetisticsHost) {
-    for (const origin of [
-      'https://sweetistics.com',
-      'https://www.sweetistics.com',
-      'https://app.sweetistics.com',
-      'https://auth.sweetistics.com',
-    ]) {
-      origins.add(origin);
-    }
-  }
+
   return [...origins];
 }
 
@@ -325,6 +318,81 @@ function normalizeDomainToOrigins(domain: string): string[] {
     addCandidate(`http://${trimmed}`);
   }
   return [...candidates];
+}
+
+function extractHostCandidate(domain: string): string | null {
+  const trimmed = domain.trim();
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    const url = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
+    return url.hostname.toLowerCase();
+  } catch {
+    return trimmed.toLowerCase();
+  }
+}
+
+function resolveConfiguredCookieOrigins(host: string): string[] {
+  const { config } = loadSweetLinkFileConfig();
+  const mappings = config.cookieMappings ?? [];
+  const results: string[] = [];
+  for (const mapping of mappings) {
+    if (mappingMatchesHost(mapping, host)) {
+      for (const origin of mapping.origins) {
+        const normalized = normalizeOrigin(origin);
+        if (normalized) {
+          results.push(normalized);
+        }
+      }
+    }
+  }
+  return results;
+}
+
+function mappingMatchesHost(mapping: SweetLinkCookieMapping, host: string): boolean {
+  for (const candidate of mapping.hosts) {
+    const extracted = extractHostCandidate(candidate);
+    if (!extracted) {
+      continue;
+    }
+    if (isHostMatch(host, extracted)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isHostMatch(host: string, pattern: string): boolean {
+  const normalizedHost = host.toLowerCase();
+  let normalizedPattern = pattern.toLowerCase();
+  if (normalizedPattern.startsWith('*.')) {
+    normalizedPattern = normalizedPattern.slice(2);
+  }
+  if (!normalizedPattern) {
+    return false;
+  }
+  if (normalizedHost === normalizedPattern) {
+    return true;
+  }
+  if (normalizedHost.endsWith(`.${normalizedPattern}`)) {
+    return true;
+  }
+  return false;
+}
+
+function normalizeOrigin(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.origin;
+  } catch {
+    try {
+      const url = new URL(`https://${value}`);
+      return url.origin;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export function normalizePuppeteerCookie(

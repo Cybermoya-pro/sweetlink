@@ -41,6 +41,21 @@ describe('core/config-file', () => {
         daemonUrl: 'https://localhost:4456',
         adminKey: 'abc123',
         port: 4100,
+        cookieMappings: [
+          {
+            hosts: ['sweetistics.com', '*.demo.local'],
+            origins: ['https://x.com', 'https://api.twitter.com'],
+          },
+        ],
+        healthChecks: {
+          paths: ['/api/health'],
+        },
+        smokeRoutes: {
+          defaults: ['timeline/home', 'settings/account'],
+          presets: {
+            custom: ['foo', 'bar'],
+          },
+        },
       }),
       'utf8'
     );
@@ -53,6 +68,21 @@ describe('core/config-file', () => {
       daemonUrl: 'https://localhost:4456',
       adminKey: 'abc123',
       port: 4100,
+      cookieMappings: [
+        {
+          hosts: ['sweetistics.com', '*.demo.local'],
+          origins: ['https://x.com', 'https://api.twitter.com'],
+        },
+      ],
+      healthChecks: {
+        paths: ['/api/health'],
+      },
+      smokeRoutes: {
+        defaults: ['timeline/home', 'settings/account'],
+        presets: {
+          custom: ['foo', 'bar'],
+        },
+      },
     });
   });
 

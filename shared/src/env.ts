@@ -18,6 +18,7 @@ export interface SweetLinkSharedEnv {
   readonly cliDevtoolsUrl: string | null;
   readonly cliChromeProfilePath: string | null;
   readonly cliCookieDebug: boolean;
+  readonly cliOauthScriptPath: string | null;
   readonly debug: boolean;
   readonly cliTestMode: boolean;
 }
@@ -50,6 +51,7 @@ export function readSweetLinkEnv(): SweetLinkSharedEnv {
     SWEETLINK_DEVTOOLS_URL,
     SWEETLINK_COOKIE_DEBUG,
     SWEETLINK_CLI_TEST,
+    SWEETLINK_OAUTH_SCRIPT,
   } = envVariables;
 
   return {
@@ -68,6 +70,7 @@ export function readSweetLinkEnv(): SweetLinkSharedEnv {
     cliDevtoolsUrl: SWEETLINK_DEVTOOLS_URL?.trim() ?? null,
     cliChromeProfilePath: SWEETLINK_CHROME_PROFILE_PATH ?? SWEETLINK_CHROME_PROFILE ?? null,
     cliCookieDebug: SWEETLINK_COOKIE_DEBUG === '1',
+    cliOauthScriptPath: SWEETLINK_OAUTH_SCRIPT?.trim() ?? null,
     debug: envVariables.SWEETLINK_DEBUG === '1',
     cliTestMode: SWEETLINK_CLI_TEST === '1',
   };

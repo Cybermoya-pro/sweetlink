@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { compact } from 'es-toolkit';
+import { loadSweetLinkFileConfig } from '../core/config-file';
 import { sweetLinkDebug } from '../env';
 import type { CliConfig } from '../types';
 import { describeUnknown, isErrnoException } from '../util/errors';
@@ -15,6 +17,44 @@ import type { SweetLinkConsoleDump } from './session';
 import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session';
 import { buildWaitCandidateUrls, urlsRoughlyMatch } from './url';
 
+const normalizeRouteList = (input: unknown): string[] => {
+  if (!input) {
+    return [];
+  }
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
+  if (Array.isArray(input)) {
+    const result: string[] = [];
+    for (const route of input) {
+      if (typeof route !== 'string') {
+        continue;
+      }
+      const trimmed = route.trim();
+      if (trimmed.length > 0) {
+        result.push(trimmed);
+      }
+    }
+    return result;
+  }
+  return [];
+};
+
+const normalizeSmokePresets = (presets: Record<string, unknown> | undefined): Record<string, string[]> => {
+  if (!presets || typeof presets !== 'object') {
+    return {};
+  }
+  const result: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(presets)) {
+    const routes = normalizeRouteList(value);
+    if (routes.length > 0) {
+      result[key] = routes;
+    }
+  }
+  return result;
+};
+
 const SMOKE_PROGRESS_PATH = path.join(os.homedir(), '.sweetlink', 'smoke-progress.json');
 
 type SmokeProgressEntry = {
@@ -28,7 +68,7 @@ type SmokeProgressFile = {
   readonly entries: SmokeProgressEntry[];
 };
 
-export const SMOKE_ROUTE_PRESETS = {
+const builtinSmokePresets: Record<string, string[]> = {
   main: ['timeline/home', 'insights', 'search', '', 'pulse'],
   settings: [
     'settings/account',
@@ -43,21 +83,33 @@ export const SMOKE_ROUTE_PRESETS = {
   ],
   'billing-only': ['settings/billing'],
   'pulse-only': ['pulse'],
-} as const satisfies Record<string, readonly string[]>;
+};
 
-const settingsPreset = [...SMOKE_ROUTE_PRESETS.settings];
-const mainPreset = [...SMOKE_ROUTE_PRESETS.main];
+const { config: fileConfig } = loadSweetLinkFileConfig();
 
-export const DEFAULT_SMOKE_ROUTES = [...mainPreset, ...settingsPreset];
+const configuredPresets = normalizeSmokePresets(fileConfig.smokeRoutes?.presets);
+
+export const SMOKE_ROUTE_PRESETS: Record<string, string[]> = {
+  ...builtinSmokePresets,
+  ...configuredPresets,
+};
+
+const configuredDefaults = normalizeRouteList(fileConfig.smokeRoutes?.defaults ?? []);
+
+const mainPresetRoutes = SMOKE_ROUTE_PRESETS.main ?? [];
+const settingsPresetRoutes = SMOKE_ROUTE_PRESETS.settings ?? [];
+const fallbackDefaults = [
+  ...((mainPresetRoutes.length > 0 ? mainPresetRoutes : builtinSmokePresets.main) as string[]),
+  ...((settingsPresetRoutes.length > 0 ? settingsPresetRoutes : builtinSmokePresets.settings) as string[]),
+];
+
+export const DEFAULT_SMOKE_ROUTES = configuredDefaults.length > 0 ? configuredDefaults : fallbackDefaults;
 
 export const deriveSmokeRoutes = (raw: string | undefined, defaults: readonly string[]): string[] => {
   if (!raw || raw.trim().length === 0) {
     return [...defaults];
   }
-  const segments = raw
-    .split(',')
-    .map((segment) => segment.trim())
-    .filter(Boolean);
+  const segments = compact(raw.split(',').map((segment) => segment.trim()));
   if (segments.length === 0) {
     return [...defaults];
   }

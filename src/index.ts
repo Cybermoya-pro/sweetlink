@@ -12,13 +12,13 @@ import {
   type SweetLinkSelectorCandidate,
 } from '@sweetistics/sweetlink-shared';
 import { Command, CommanderError, Option } from 'commander';
-import { uniq } from 'es-toolkit';
+import { compact, uniq } from 'es-toolkit';
 import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
 import { readRootProgramOptions, resolveConfig } from './core/config';
-import { loadSweetLinkFileConfig } from './core/config-file';
 import type { SweetLinkFileConfig } from './core/config-file';
+import { loadSweetLinkFileConfig } from './core/config-file';
 import { readCommandOptions } from './core/env';
 import { cleanupControlledChromeRegistry, registerControlledChromeInstance } from './devtools-registry';
 import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env';
@@ -163,6 +163,7 @@ const defaultAppUrl = deriveDefaultAppUrl(envAppUrl, fileConfig);
 const defaultProdAppUrl = fileConfig.prodUrl ?? envProdAppUrl;
 const defaultDaemonUrl = fileConfig.daemonUrl ?? envDaemonUrl;
 const defaultAdminKey = fileConfig.adminKey ?? localAdminApiKey ?? sharedAdminApiKey ?? '';
+const defaultHealthPaths = fileConfig.healthChecks?.paths ?? null;
 
 const LOCAL_DEFAULT_APP_URL = 'http://localhost:3000';
 
@@ -219,17 +220,25 @@ interface OpenCommandContext {
   readonly enableDevtools: boolean;
   readonly headless: boolean;
   readonly foreground: boolean;
+  readonly healthCheckPaths: readonly string[] | null;
+  readonly oauthScriptPath: string | null;
 }
 
 program
   .option('-a, --app-url <url>', 'Application base URL for SweetLink commands', defaultAppUrl)
   .option('--url <url>', 'Alias for --app-url')
-  .addOption(new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort))
+  .addOption(
+    new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort)
+  )
   .option('-d, --daemon-url <url>', 'SweetLink daemon base URL', defaultDaemonUrl)
   .option(
     '-k, --admin-key <key>',
     'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)',
     defaultAdminKey
+  )
+  .option(
+    '--oauth-script <path>',
+    'Absolute or relative path to an OAuth automation script (ESM module). Overrides config/env defaults.'
   );
 
 program
@@ -313,7 +322,7 @@ program
   .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://sweetistics.com)')
   .option('--json', 'Output JSON instead of a human-readable list', false)
   .action(async (domains: string[], options: { json: boolean }) => {
-    const uniqueDomains = uniq(domains.map((domain) => domain.trim()).filter(Boolean));
+    const uniqueDomains = uniq(compact(domains.map((domain) => domain.trim())));
     if (uniqueDomains.length === 0) {
       console.log('No domains provided; nothing to collect.');
       return;
@@ -416,7 +425,10 @@ async function runOpenCommand(options: OpenCommandOptions, command: Command, roo
     console.log('--foreground is ignored in headless mode.');
   }
   if (context.env === 'dev') {
-    await ensureDevStackRunningRuntime(context.targetUrl, { repoRoot });
+    await ensureDevStackRunningRuntime(context.targetUrl, {
+      repoRoot,
+      healthPaths: context.healthCheckPaths ?? undefined,
+    });
   }
 
   const waitToken = await fetchWaitTokenIfNeeded(context);
@@ -469,6 +481,8 @@ function buildOpenCommandContext(
     enableDevtools,
     headless,
     foreground,
+    healthCheckPaths: defaultHealthPaths,
+    oauthScriptPath: config.oauthScriptPath,
   };
 }
 
@@ -555,7 +569,7 @@ interface ReachabilityState {
 }
 
 async function checkOpenCommandReachability(context: OpenCommandContext): Promise<ReachabilityState> {
-  const appReachable = await isAppReachableRuntime(context.targetUrl.origin);
+  const appReachable = await isAppReachableRuntime(context.targetUrl.origin, context.healthCheckPaths ?? undefined);
   const dbReachable = context.env === 'dev' ? await isDatabaseReachableRuntime() : true;
   return { appReachable, dbReachable };
 }
@@ -609,6 +623,7 @@ async function handleControlledReuse(
       const oauthAttempt = await attemptTwitterOauthAutoAccept({
         devtoolsUrl: reuseResult.devtoolsUrl,
         sessionUrl: context.targetUrlString,
+        scriptPath: context.oauthScriptPath,
       });
       if (oauthAttempt.handled) {
         console.log(
@@ -678,6 +693,7 @@ async function handleControlledLaunch(context: OpenCommandContext, waitToken: st
       const oauthAttempt = await attemptTwitterOauthAutoAccept({
         devtoolsUrl: info.devtoolsUrl,
         sessionUrl: context.targetUrlString,
+        scriptPath: context.oauthScriptPath,
       });
       if (oauthAttempt.handled) {
         console.log(
@@ -1843,22 +1859,23 @@ function urlsRoughlyMatch(a: string, b: string): boolean {
 }
 
 async function devtoolsAuthorize(options: { url?: string }, command: Command): Promise<void> {
-  const config = await loadDevToolsConfig();
-  if (!config?.devtoolsUrl) {
+  const devtoolsConfig = await loadDevToolsConfig();
+  if (!devtoolsConfig?.devtoolsUrl) {
     console.log('No DevTools session detected. Launch Chrome with `pnpm sweetlink open --controlled` first.');
     return;
   }
 
+  const cliConfig = resolveConfig(command);
+
   let sessionUrl = options.url?.trim() || undefined;
   if (!sessionUrl) {
-    sessionUrl = config.targetUrl ?? undefined;
+    sessionUrl = devtoolsConfig.targetUrl ?? undefined;
   }
 
-  if (!sessionUrl && config.sessionId) {
+  if (!sessionUrl && devtoolsConfig.sessionId) {
     try {
-      const cliConfig = resolveConfig(command);
       const token = await fetchCliToken(cliConfig);
-      const summary = await getSessionSummaryById(cliConfig, token, config.sessionId);
+      const summary = await getSessionSummaryById(cliConfig, token, devtoolsConfig.sessionId);
       sessionUrl = summary?.url ?? sessionUrl;
     } catch {
       /* ignore inability to fetch session summary */
@@ -1867,7 +1884,7 @@ async function devtoolsAuthorize(options: { url?: string }, command: Command): P
 
   if (!sessionUrl) {
     try {
-      const tabs = await fetchDevToolsTabs(config.devtoolsUrl);
+      const tabs = await fetchDevToolsTabs(devtoolsConfig.devtoolsUrl);
       const oauthTab = tabs.find((tab) => {
         if (!tab.url) {
           return false;
@@ -1895,7 +1912,11 @@ async function devtoolsAuthorize(options: { url?: string }, command: Command): P
   }
 
   try {
-    const result = await attemptTwitterOauthAutoAccept({ devtoolsUrl: config.devtoolsUrl, sessionUrl });
+    const result = await attemptTwitterOauthAutoAccept({
+      devtoolsUrl: devtoolsConfig.devtoolsUrl,
+      sessionUrl,
+      scriptPath: cliConfig.oauthScriptPath,
+    });
     if (result.handled) {
       console.log(
         `Authorize prompt handled via ${result.action ?? 'click'}${

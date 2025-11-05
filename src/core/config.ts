@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import path from 'node:path';
 import { sweetLinkEnv } from '../env';
 import type { CliConfig } from '../types';
 import { loadSweetLinkFileConfig } from './config-file';
@@ -8,6 +9,7 @@ export interface RootProgramOptions {
   readonly appUrl: string;
   readonly daemonUrl: string;
   readonly adminKey: string | null;
+  readonly oauthScriptPath: string | null;
 }
 
 const normalizeUrlOption = (value: unknown, fallback: string): string => {
@@ -33,14 +35,17 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
     daemonUrl?: unknown;
     adminKey?: unknown;
     port?: unknown;
+    oauthScript?: unknown;
   }>(command);
   const { config } = loadSweetLinkFileConfig();
-  const optionUrl =
-    typeof rawOptions.appUrl === 'string'
-      ? rawOptions.appUrl
-      : typeof rawOptions.url === 'string'
-        ? rawOptions.url
-        : undefined;
+  let optionUrl: string | undefined;
+  if (typeof rawOptions.appUrl === 'string') {
+    optionUrl = rawOptions.appUrl;
+  } else if (typeof rawOptions.url === 'string') {
+    optionUrl = rawOptions.url;
+  } else {
+    optionUrl = undefined;
+  }
   const optionPort = normalizePort(rawOptions.port);
   const configPort = typeof config.port === 'number' ? config.port : null;
 
@@ -53,11 +58,23 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
   const fallbackDaemonUrl = config.daemonUrl ?? sweetLinkEnv.daemonUrl;
   const fallbackAdminKey =
     rawOptions.adminKey ?? config.adminKey ?? sweetLinkEnv.localAdminApiKey ?? sweetLinkEnv.adminApiKey ?? null;
+  let optionOauthScriptPath: string | null = null;
+  if (typeof rawOptions.oauthScript === 'string') {
+    const trimmed = rawOptions.oauthScript.trim();
+    if (trimmed.length > 0) {
+      optionOauthScriptPath = resolveCliPath(trimmed);
+    }
+  }
+  const fallbackOauthScriptPath =
+    optionOauthScriptPath ??
+    config.oauthScript ??
+    (sweetLinkEnv.cliOauthScriptPath ? resolveCliPath(sweetLinkEnv.cliOauthScriptPath) : null);
 
   return {
     appUrl: normalizeUrlOption(optionUrl, fallbackAppUrl),
     daemonUrl: normalizeUrlOption(rawOptions.daemonUrl, fallbackDaemonUrl),
     adminKey: normalizeAdminKey(fallbackAdminKey),
+    oauthScriptPath: fallbackOauthScriptPath,
   };
 };
 
@@ -69,6 +86,7 @@ export function resolveConfig(command: Command): CliConfig {
     adminApiKey: options.adminKey,
     appBaseUrl: options.appUrl,
     daemonBaseUrl: options.daemonUrl,
+    oauthScriptPath: options.oauthScriptPath,
   };
 }
 
@@ -123,3 +141,10 @@ function normalizePort(value: unknown): number | null {
   }
   return null;
 }
+
+const resolveCliPath = (candidate: string): string => {
+  if (path.isAbsolute(candidate)) {
+    return candidate;
+  }
+  return path.resolve(process.cwd(), candidate);
+};

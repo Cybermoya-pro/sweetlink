@@ -38,9 +38,15 @@ export function maybeInstallMkcertDispatcher(): void {
 }
 
 /** Ensures the local dev server and database are online, attempting to start them via runner when needed. */
-export async function ensureDevStackRunning(targetUrl: URL, options: { repoRoot: string }): Promise<void> {
+export async function ensureDevStackRunning(
+  targetUrl: URL,
+  options: { repoRoot: string; healthPaths?: readonly string[] }
+): Promise<void> {
   const appOrigin = targetUrl.origin;
-  const [appReady, dbReady] = await Promise.all([isAppReachable(appOrigin), isDatabaseReachable()]);
+  const [appReady, dbReady] = await Promise.all([
+    isAppReachable(appOrigin, options.healthPaths),
+    isDatabaseReachable(),
+  ]);
   if (appReady && dbReady) {
     return;
   }
@@ -64,7 +70,10 @@ export async function ensureDevStackRunning(targetUrl: URL, options: { repoRoot:
   const timeoutMs = 90_000;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const [readyApp, readyDb] = await Promise.all([isAppReachable(appOrigin), isDatabaseReachable()]);
+    const [readyApp, readyDb] = await Promise.all([
+      isAppReachable(appOrigin, options.healthPaths),
+      isDatabaseReachable(),
+    ]);
     if (readyApp && readyDb) {
       console.log('Dev stack is online (web + database).');
       return;
@@ -77,27 +86,51 @@ export async function ensureDevStackRunning(targetUrl: URL, options: { repoRoot:
   );
 }
 
-/** Performs a lightweight HEAD request to confirm the web app responds. */
-export async function isAppReachable(appBaseUrl: string): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    try {
-      await fetch(appBaseUrl, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
-      return true;
-    } finally {
-      clearTimeout(timeout);
+/** Performs lightweight HEAD requests to confirm the web app responds. */
+export async function isAppReachable(appBaseUrl: string, healthPaths?: readonly string[]): Promise<boolean> {
+  const targets = new Set<string>([appBaseUrl]);
+  if (Array.isArray(healthPaths)) {
+    for (const pathCandidate of healthPaths) {
+      if (typeof pathCandidate !== 'string' || pathCandidate.trim().length === 0) {
+        continue;
+      }
+      const trimmed = pathCandidate.trim();
+      try {
+        const target = trimmed.startsWith('http')
+          ? new URL(trimmed)
+          : new URL(trimmed.startsWith('/') ? trimmed : `/${trimmed}`, appBaseUrl);
+        targets.add(target.toString());
+      } catch (error) {
+        void error;
+      }
     }
-  } catch (error) {
-    const message = extractEventMessage(error);
-    if (message.includes('ECONNREFUSED') || message.includes('ENOTFOUND') || message.includes('EHOSTUNREACH')) {
-      return false;
-    }
-    if ((error as { name?: string }).name === 'AbortError') {
-      return false;
-    }
-    return false;
   }
+
+  for (const target of targets) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      try {
+        await fetch(target, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
+        return true;
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (error) {
+      const message = extractEventMessage(error);
+      const isAbort = (error as { name?: string }).name === 'AbortError';
+      if (
+        !message.includes('ECONNREFUSED') &&
+        !message.includes('ENOTFOUND') &&
+        !message.includes('EHOSTUNREACH') &&
+        !isAbort
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return false;
 }
 
 /** Checks common Postgres ports to see if the local database is reachable. */

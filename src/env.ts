@@ -12,6 +12,7 @@ export interface SweetLinkCliEnv {
   readonly devtoolsUrl: string | null;
   readonly chromeProfilePath: string | null;
   readonly cookieDebug: boolean;
+  readonly oauthScriptPath: string | null;
 }
 
 export function readCliEnv(): SweetLinkCliEnv {
@@ -22,6 +23,7 @@ export function readCliEnv(): SweetLinkCliEnv {
     devtoolsUrl: sharedSweetLinkEnv.cliDevtoolsUrl,
     chromeProfilePath: sharedSweetLinkEnv.cliChromeProfilePath,
     cookieDebug: sharedSweetLinkEnv.cliCookieDebug,
+    oauthScriptPath: sharedSweetLinkEnv.cliOauthScriptPath,
   };
 }
 
