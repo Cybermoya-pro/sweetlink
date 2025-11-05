@@ -1,5 +1,5 @@
 {
-  "name": "@sweetistics/sweetlink-daemon",
+  "name": "@sweetlink/daemon",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
   },
   "license": "FSL-1.1-Apache-2.0",
   "dependencies": {
-    "@sweetistics/sweetlink-shared": "workspace:*",
+    "@sweetlink/shared": "file:../shared",
     "dotenv": "^17.2.3",
     "random-word-slugs": "^0.1.7",
     "ws": "^8.18.3"

@@ -10,7 +10,7 @@ import {
   type SweetLinkScreenshotHook,
   type SweetLinkScreenshotRenderer,
   type SweetLinkSelectorCandidate,
-} from '@sweetistics/sweetlink-shared';
+} from '@sweetlink/shared';
 import { Command, CommanderError, Option } from 'commander';
 import { compact, uniq } from 'es-toolkit';
 import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
@@ -110,6 +110,7 @@ import { buildScreenshotHooks } from './screenshot-hooks';
 import { fetchCliToken } from './token';
 import type { CliConfig, ServerConfig } from './types';
 import { extractEventMessage, isErrnoException, logDebugError } from './util/errors';
+import { describeAppForPrompt, formatAppLabel } from './util/app-label';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -158,6 +159,7 @@ const {
   prodAppUrl: envProdAppUrl,
 } = sweetLinkEnv;
 
+const defaultAppLabel = formatAppLabel(fileConfig.appLabel ?? sweetLinkEnv.appLabel);
 const defaultAppUrl = deriveDefaultAppUrl(envAppUrl, fileConfig);
 const defaultProdAppUrl = fileConfig.prodUrl ?? envProdAppUrl;
 const defaultDaemonUrl = fileConfig.daemonUrl ?? envDaemonUrl;
@@ -209,6 +211,7 @@ interface OpenCommandOptions {
 
 interface OpenCommandContext {
   readonly config: CliConfig;
+  readonly appLabel: string;
   readonly env: 'dev' | 'prod';
   readonly controlled: boolean;
   readonly preferredPort?: number;
@@ -226,6 +229,7 @@ interface OpenCommandContext {
 
 program
   .option('-a, --app-url <url>', 'Application base URL for SweetLink commands', defaultAppUrl)
+  .option('--app-label <label>', 'Friendly name for your application (used in help output)', defaultAppLabel)
   .option('--url <url>', 'Alias for --app-url')
   .addOption(
     new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort)
@@ -233,7 +237,7 @@ program
   .option('-d, --daemon-url <url>', 'SweetLink daemon base URL', defaultDaemonUrl)
   .option(
     '-k, --admin-key <key>',
-    'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)',
+    'Optional admin API key (defaults to SWEETLINK_LOCAL_ADMIN_API_KEY or SWEETLINK_ADMIN_API_KEY env; falls back to legacy SWEETISTICS_* keys)',
     defaultAdminKey
   )
   .option(
@@ -272,7 +276,7 @@ program
     if (sessions.length === 0) {
       console.log('No active SweetLink sessions.');
       console.log(
-        'Hint: run `pnpm sweetlink open --controlled --path timeline/home` to launch an authenticated tab automatically.'
+        'Hint: run `pnpm sweetlink open --controlled --path /` to launch an authenticated tab automatically.'
       );
       return;
     }
@@ -319,7 +323,7 @@ program
 program
   .command('cookies')
   .description('Dump Chrome cookies for one or more domains or origins')
-  .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://sweetistics.com)')
+  .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://example.com)')
   .option('--json', 'Output JSON instead of a human-readable list', false)
   .action(async (domains: string[], options: { json: boolean }) => {
     const uniqueDomains = uniq(compact(domains.map((domain) => domain.trim())));
@@ -396,7 +400,7 @@ program
 
 program
   .command('open')
-  .description('Open Sweetistics in Chrome with SweetLink auto-enabled')
+  .description(`Open ${defaultAppLabel} in Chrome with SweetLink auto-enabled`)
   .option('-e, --env <env>', 'Environment to open (dev or prod)', 'dev')
   .option('-p, --path <path>', 'Optional path to append (default "")', '')
   .option('--url <url>', 'Explicit URL to open (overrides --path and --env)')
@@ -473,6 +477,7 @@ function buildOpenCommandContext(
   const foreground = Boolean(options.foreground);
   return {
     config,
+    appLabel: config.appLabel,
     env,
     controlled,
     preferredPort,
@@ -571,7 +576,9 @@ async function checkOpenCommandReachability(context: OpenCommandContext): Promis
 }
 
 function logOpenCommandReachabilityErrors(context: OpenCommandContext): void {
-  console.error(`${context.targetUrl.origin} did not respond. Start the web application and retry.`);
+  console.error(
+    `${context.targetUrl.origin} did not respond. Start ${describeAppForPrompt(context.appLabel)} and retry.`
+  );
 }
 
 async function handleControlledOpen(context: OpenCommandContext, waitToken: string | null): Promise<void> {
@@ -921,7 +928,7 @@ program
         logInfo(
           `Saved screenshot to ${outputPath} (${devtoolsCaptureResult.width}x${devtoolsCaptureResult.height}, ${devtoolsCaptureResult.sizeKb.toFixed(1)} KB, method: ${devtoolsCaptureResult.renderer}).`
         );
-        await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+        await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
         return;
       }
       if (method === 'puppeteer') {
@@ -1010,18 +1017,19 @@ program
         }
 
         const fallbackError = fallbackOutcome.fallbackResult.ok ? null : fallbackOutcome.fallbackResult.error;
-        const recovered = await tryDevToolsRecovery({
-          sessionUrl: sessionSummary?.url,
-          devtoolsUrl,
-          selector: options.selector,
-          quality,
-          mode,
-          outputPath,
-          prompt,
-          suppressOutput,
-          logInfo,
-          failureReason: fallbackError ?? result.error,
-        });
+      const recovered = await tryDevToolsRecovery({
+        sessionUrl: sessionSummary?.url,
+        devtoolsUrl,
+        selector: options.selector,
+        quality,
+        mode,
+        outputPath,
+        prompt,
+        suppressOutput,
+        logInfo,
+        appLabel: config.appLabel,
+        failureReason: fallbackError ?? result.error,
+      });
         if (recovered) {
           return;
         }
@@ -1041,6 +1049,7 @@ program
         prompt,
         suppressOutput,
         logInfo,
+        appLabel: config.appLabel,
         failureReason: result.error,
       });
       if (recovered) {
@@ -1053,7 +1062,7 @@ program
     }
 
     await persistScreenshotResult(outputPath, result, { silent: suppressOutput });
-    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+    await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
   });
 
 program

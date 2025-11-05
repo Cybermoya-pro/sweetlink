@@ -43,7 +43,7 @@ describe('core/config-file', () => {
         port: 4100,
         cookieMappings: [
           {
-            hosts: ['sweetistics.com', '*.demo.local'],
+            hosts: ['example.dev', '*.demo.local'],
             origins: ['https://x.com', 'https://api.twitter.com'],
           },
         ],
@@ -79,7 +79,7 @@ describe('core/config-file', () => {
       port: 4100,
       cookieMappings: [
         {
-          hosts: ['sweetistics.com', '*.demo.local'],
+          hosts: ['example.dev', '*.demo.local'],
           origins: ['https://x.com', 'https://api.twitter.com'],
         },
       ],

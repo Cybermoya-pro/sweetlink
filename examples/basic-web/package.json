@@ -1,5 +1,5 @@
 {
-  "name": "@sweetistics/sweetlink-example-basic-web",
+  "name": "@sweetlink/example-basic-web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,9 +8,7 @@
     "preview": "vite preview",
     "start": "node dist/server/server.js"
   },
-  "dependencies": {
-    "express": "^4.21.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.12",
     "@types/express": "^4.17.21",

@@ -21,9 +21,12 @@ describe('resolveSessionIdFromHint', () => {
     ({ resolveSessionIdFromHint } = await import('../src/index'));
 
     config = {
-      appBaseUrl: 'https://sweetistics.local',
+      appLabel: 'Example App',
+      appBaseUrl: 'https://app.example.dev',
       daemonBaseUrl: 'https://daemon.local',
       adminApiKey: 'dummy-admin-key',
+      oauthScriptPath: null,
+      servers: {},
     };
   });
 
@@ -49,9 +52,9 @@ describe('resolveSessionIdFromHint', () => {
         {
           sessionId: '6b41c868-229a-4c44-ac3d-fcbcf21ac6a4',
           codename: 'mango-honey',
-          url: 'https://app.local/timeline',
+          url: 'https://app.example.dev/timeline',
           title: 'Timeline',
-          topOrigin: 'https://app.local',
+          topOrigin: 'https://app.example.dev',
           createdAt: now - 1000,
           lastSeenAt: now,
           heartbeatMsAgo: 500,

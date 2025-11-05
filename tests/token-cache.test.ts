@@ -31,9 +31,12 @@ describe('fetchCliToken caching', () => {
     }) as typeof fetch;
 
     const config: CliConfig = {
-      appBaseUrl: 'https://sweetistics.local',
+      appLabel: 'Example App',
+      appBaseUrl: 'https://app.example.dev',
       daemonBaseUrl: 'https://daemon.local',
       adminApiKey: 'dummy-admin-key',
+      oauthScriptPath: null,
+      servers: {},
     };
 
     const firstToken = await fetchCliToken(config);
@@ -53,9 +56,12 @@ describe('fetchCliToken caching', () => {
     }) as typeof fetch;
 
     const config: CliConfig = {
-      appBaseUrl: 'https://sweetistics.local',
+      appLabel: 'Example App',
+      appBaseUrl: 'https://app.example.dev',
       daemonBaseUrl: 'https://daemon.local',
       adminApiKey: null,
+      oauthScriptPath: null,
+      servers: {},
     };
 
     const firstToken = await fetchCliToken(config);

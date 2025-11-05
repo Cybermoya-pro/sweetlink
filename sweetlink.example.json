@@ -1,0 +1,41 @@
+{
+  "appLabel": "Example Analytics",
+  "appUrl": "http://localhost:4100",
+  "prodUrl": "https://app.example.dev",
+  "daemonUrl": "https://localhost:4455",
+  "port": 4100,
+  "healthChecks": {
+    "paths": ["/api/health"]
+  },
+  "cookieMappings": [
+    {
+      "hosts": ["example.dev", "*.example.dev", "localhost", "127.0.0.1"],
+      "origins": [
+        "https://app.example.dev",
+        "https://auth.example.dev",
+        "https://api.example.dev"
+      ]
+    }
+  ],
+  "smokeRoutes": {
+    "defaults": [
+      "",
+      "dashboard",
+      "reports",
+      "settings/account",
+      "settings/billing"
+    ],
+    "presets": {
+      "smoke": ["dashboard", "reports"],
+      "settings": ["settings/account", "settings/billing"]
+    }
+  },
+  "servers": [
+    {
+      "env": "dev",
+      "start": ["./runner", "pnpm", "run", "dev"],
+      "check": ["curl", "--fail", "http://localhost:4100/api/health"],
+      "timeoutMs": 60000
+    }
+  ]
+}

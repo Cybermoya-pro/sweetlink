@@ -1,4 +1,4 @@
-import type { SweetLinkScreenshotHook } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkScreenshotHook } from '@sweetlink/shared';
 
 export interface BuildScreenshotHooksOptions {
   readonly selector: string | null;

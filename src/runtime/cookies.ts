@@ -363,6 +363,18 @@ function mappingMatchesHost(mapping: SweetLinkCookieMapping, host: string): bool
   return false;
 }
 
+function isConfiguredCookieDomain(host: string): boolean {
+  const normalizedHost = host.toLowerCase();
+  const { config } = loadSweetLinkFileConfig();
+  const mappings = config.cookieMappings ?? [];
+  for (const mapping of mappings) {
+    if (mappingMatchesHost(mapping, normalizedHost)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isHostMatch(host: string, pattern: string): boolean {
   const normalizedHost = host.toLowerCase();
   let normalizedPattern = pattern.toLowerCase();
@@ -415,7 +427,7 @@ export function normalizePuppeteerCookie(
   const targetHost = bases.targetBase.hostname;
   const isLocalTarget = targetHost === 'localhost' || targetHost === '127.0.0.1';
   const normalizedDomain = domain?.replace(/^\./, '') ?? null;
-  const isSweetisticsDomain = normalizedDomain ? /(^|\.)sweetistics\.[a-z]+$/i.test(normalizedDomain) : false;
+  const isConfiguredDomain = normalizedDomain ? isConfiguredCookieDomain(normalizedDomain) : false;
   const isLocalDomain =
     normalizedDomain === 'localhost' || normalizedDomain === '127.0.0.1' || normalizedDomain === '::1';
 
@@ -424,7 +436,7 @@ export function normalizePuppeteerCookie(
   }
 
   if (domain && domain !== 'localhost') {
-    if (isLocalTarget && (isSweetisticsDomain || isLocalDomain)) {
+    if (isLocalTarget && (isConfiguredDomain || isLocalDomain)) {
       result.url = bases.targetBase.origin;
     } else {
       result.domain = domain;

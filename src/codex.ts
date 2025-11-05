@@ -1,6 +1,7 @@
 import { type SpawnOptions, spawn } from 'node:child_process';
 import type { SweetLinkConsoleDump } from './runtime/session';
 import { extractEventMessage, isErrnoException } from './util/errors';
+import { describeAppForPrompt } from './util/app-label';
 
 const CODEX_ARGS = ['exec', '--yolo', '--skip-git-repo-check'];
 
@@ -37,7 +38,7 @@ export async function analyzeConsoleWithCodex(
   selector: string,
   prompt: string,
   events: SweetLinkConsoleDump[],
-  options: { silent?: boolean } = {}
+  options: { silent?: boolean; appLabel?: string } = {}
 ): Promise<boolean> {
   const question = prompt.trim();
   if (!question) {
@@ -52,8 +53,9 @@ export async function analyzeConsoleWithCodex(
           return `[${timestamp}] ${event.level}${suffix}`;
         })
       : ['(no console events were captured after the click)'];
+  const appDescription = describeAppForPrompt(options.appLabel);
   const combinedPrompt =
-    `You are analyzing console output from a Sweetistics analytics website immediately after triggering a click on selector "${selector}". ` +
+    `You are analyzing console output from ${appDescription} immediately after triggering a click on selector "${selector}". ` +
     'Review the log lines below (most recent last) and answer the agent’s question.\n\n' +
     `Console output:\n${lines.join('\n')}\n\nQuestion: ${question}`;
   if (!options.silent) {

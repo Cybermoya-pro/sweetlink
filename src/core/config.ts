@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import path from 'node:path';
 import { sweetLinkEnv } from '../env';
+import { formatAppLabel, normalizeAppLabel } from '../util/app-label';
 import type { CliConfig } from '../types';
 import { loadSweetLinkFileConfig } from './config-file';
 import { readCommandOptions } from './env';
@@ -14,6 +15,7 @@ interface ResolvedServerConfig {
 }
 
 export interface RootProgramOptions {
+  readonly appLabel: string;
   readonly appUrl: string;
   readonly daemonUrl: string;
   readonly adminKey: string | null;
@@ -39,6 +41,7 @@ const normalizeAdminKey = (value: unknown): string | null => {
 /** Reads the root program options, falling back to defaults when values are missing. */
 export const readRootProgramOptions = (command: Command): RootProgramOptions => {
   const rawOptions = readCommandOptions<{
+    appLabel?: unknown;
     appUrl?: unknown;
     url?: unknown;
     daemonUrl?: unknown;
@@ -78,6 +81,8 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
     optionOauthScriptPath ??
     config.oauthScript ??
     (sweetLinkEnv.cliOauthScriptPath ? resolveCliPath(sweetLinkEnv.cliOauthScriptPath) : null);
+  const optionLabel = normalizeAppLabel(rawOptions.appLabel);
+  const fallbackAppLabel = formatAppLabel(config.appLabel ?? sweetLinkEnv.appLabel);
 
   const servers: ResolvedServerConfig[] = (config.servers ?? []).map((server) => ({
     env: server.env,
@@ -92,6 +97,7 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
     daemonUrl: normalizeUrlOption(rawOptions.daemonUrl, fallbackDaemonUrl),
     adminKey: normalizeAdminKey(fallbackAdminKey),
     oauthScriptPath: fallbackOauthScriptPath,
+    appLabel: optionLabel ?? fallbackAppLabel,
     servers,
   };
 };
@@ -105,6 +111,7 @@ export function resolveConfig(command: Command): CliConfig {
     serversByEnv[server.env] = server;
   }
   return {
+    appLabel: options.appLabel,
     adminApiKey: options.adminKey,
     appBaseUrl: options.appUrl,
     daemonBaseUrl: options.daemonUrl,

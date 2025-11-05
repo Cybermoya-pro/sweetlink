@@ -30,17 +30,17 @@ describe('buildCookieOrigins', () => {
       config: {
         cookieMappings: [
           {
-            hosts: ['sweetistics.com'],
-            origins: ['https://api.twitter.com', 'https://x.com'],
+            hosts: ['example.dev'],
+            origins: ['https://auth.example.dev', 'https://api.example.dev'],
           },
         ],
       },
     });
 
-    expect(buildCookieOrigins('https://sweetistics.com/timeline')).toEqual([
-      'https://sweetistics.com',
-      'https://api.twitter.com',
-      'https://x.com',
+    expect(buildCookieOrigins('https://example.dev/dashboard')).toEqual([
+      'https://example.dev',
+      'https://auth.example.dev',
+      'https://api.example.dev',
     ]);
   });
 
@@ -50,15 +50,15 @@ describe('buildCookieOrigins', () => {
       config: {
         cookieMappings: [
           {
-            hosts: ['Sweetistics.com'],
+            hosts: ['Example.dev'],
             origins: ['https://login.example.test'],
           },
         ],
       },
     });
 
-    expect(buildCookieOrigins('https://app.sweetistics.com/dashboard')).toEqual([
-      'https://app.sweetistics.com',
+    expect(buildCookieOrigins('https://app.example.dev/dashboard')).toEqual([
+      'https://app.example.dev',
       'https://login.example.test',
     ]);
   });

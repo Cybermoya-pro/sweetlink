@@ -10,5 +10,15 @@ export default defineConfig({
     environment: 'node',
     root: rootDirectory,
     globals: true,
+    deps: {
+      inline: [/^@sweetlink\/shared/],
+    },
+  },
+  resolve: {
+    alias: {
+      '@sweetlink/shared': path.resolve(rootDirectory, 'shared/src/index.ts'),
+      '@sweetlink/shared/node': path.resolve(rootDirectory, 'shared/src/node.ts'),
+      '@sweetlink/shared/env': path.resolve(rootDirectory, 'shared/src/env.ts'),
+    },
   },
 });

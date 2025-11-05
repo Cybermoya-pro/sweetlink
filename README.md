@@ -8,7 +8,7 @@ SweetLink is the agent-ready way to "connect your agent to your web app. Like Pl
 
 - **Session management** – list active sessions, inspect console/network buffers, and reconnect after hot reloads.
 - **Controlled Chrome launch** – spin up a DevTools-enabled browser, sync cookies from your main profile, and auto-approve the Twitter OAuth consent flow.
-- **Smoke tests** – navigate the major Sweetistics routes (`timeline/home`, `insights`, `search`, `pulse`, and settings) and flag authentication or runtime errors.
+- **Smoke tests** – sweep configurable route presets (dashboard, reports, search, billing, settings) and flag authentication or runtime errors.
 - **Screenshots & selectors** – capture JPEGs via Puppeteer/HTML renderers and discover DOM selectors for automation.
 - **DevTools telemetry** – stream console/network logs to disk, dump diagnostics when a session fails to register, and click the OAuth authorize button on demand.
 
@@ -25,7 +25,7 @@ From the monorepo:
 
 ```bash
 pnpm install
-pnpm --filter @sweetistics/sweetlink run build
+pnpm --filter @sweetlink/cli run build
 ```
 
 Standalone checkout:
@@ -43,15 +43,17 @@ pnpm sweetlink --help
 
 Common workflows:
 
-- `pnpm sweetlink open --controlled --path timeline/home` – launch/reuse the controlled Chrome window.
-- `pnpm sweetlink open --url http://localhost:4100/timeline/home` – target a non-default host/port for one-off runs.
+- `pnpm sweetlink open --controlled --path /dashboard` – launch/reuse the controlled Chrome window.
+- `pnpm sweetlink open --url http://localhost:4100/dashboard` – target a non-default host/port for one-off runs.
 - `pnpm sweetlink sessions` – view active sessions (codename, heartbeat, socket state, buffered console errors).
-- `pnpm sweetlink smoke --routes main` – sweep timeline, insights, search, pulse, and settings routes.
+- `pnpm sweetlink smoke --routes main` – sweep the configured dashboard/search/settings routes.
 - `pnpm sweetlink devtools authorize` – force-click the OAuth consent button when Twitter prompts.
 
 When a session fails to register, the CLI now emits a DevTools snapshot and Puppeteer scrape (overlay/body text) so build/runtime errors surface immediately.
 
 ## Configuration
+
+### Generic usage
 
 SweetLink resolves defaults from (highest priority first):
 
@@ -60,7 +62,7 @@ SweetLink resolves defaults from (highest priority first):
 3. Environment variables (`SWEETLINK_APP_URL`, `SWEETLINK_DAEMON_URL`, `SWEETLINK_PROD_URL`)
 4. Fallback `http://localhost:3000`
 
-Example `sweetlink.json` for a non-Sweetistics app:
+Start by copying `sweetlink.example.json` from the repo root. It ships with a neutral baseline config:
 
 ```json
 {
@@ -73,29 +75,40 @@ Example `sweetlink.json` for a non-Sweetistics app:
   },
   "cookieMappings": [
     {
-      "hosts": ["sweetistics.com", "*.sweetistics.com", "localhost", "127.0.0.1"],
+      "hosts": ["example.dev", "*.example.dev", "localhost", "127.0.0.1"],
       "origins": [
-        "https://sweetistics.com",
-        "https://app.sweetistics.com",
-        "https://x.com",
-        "https://twitter.com",
-        "https://api.twitter.com"
+        "https://app.example.dev",
+        "https://auth.example.dev",
+        "https://api.example.dev"
       ]
     }
   ]
 }
 ```
 
-Place the config file in your project root (or any parent directory). With the file in place, `pnpm sweetlink open --controlled --foreground` will automatically point at `http://localhost:4100` unless an explicit `--url`/`--app-url` is provided. The CLI also exposes `--port` to temporarily rewrite the local host port without editing the JSON file. `healthChecks.paths` lets you point the readiness probe at specific endpoints (for example `/api/health`). `cookieMappings` declares extra origins to harvest cookies from (such as Twitter auth cookies when driving a Sweetistics tab). `smokeRoutes.defaults` overrides the built-in route sweep, and `smokeRoutes.presets` lets you register new comma-delimited shortcuts (the built-ins `main`, `settings`, `billing-only`, and `pulse-only` remain available). Hosts accept plain domains or wildcard-prefixed entries (`*.sweetistics.com`), and origins must be fully-qualified URLs. Omit `daemonUrl`, `prodUrl`, `healthChecks`, `smokeRoutes`, or `cookieMappings` to keep SweetLink’s built-in defaults for those targets.
+Place the config file in your project root (or any parent directory). With the file in place, `pnpm sweetlink open --controlled --foreground` will automatically point at `http://localhost:4100` unless an explicit `--url`/`--app-url` is provided. The CLI also exposes `--port` to temporarily rewrite the local host port without editing the JSON file. `healthChecks.paths` lets you point the readiness probe at specific endpoints (for example `/api/health`). `cookieMappings` declares extra origins to harvest cookies from (such as OAuth provider cookies when you reuse a signed-in Chrome profile). `smokeRoutes.defaults` overrides the built-in route sweep, and `smokeRoutes.presets` lets you register new comma-delimited shortcuts (the built-ins `main`, `settings`, `billing-only`, and `pulse-only` remain available). Hosts accept plain domains or wildcard-prefixed entries (`*.example.dev`), and origins must be fully-qualified URLs. Omit `daemonUrl`, `prodUrl`, `healthChecks`, `smokeRoutes`, or `cookieMappings` to keep SweetLink’s defaults for those targets.
+
+### Sweetistics monorepo defaults
+
+The Sweetistics repo keeps `sweetlink.json` checked in with our internal hosts (`sweetistics.com`, OAuth origins, etc.). Treat it as a working example—clone `sweetlink.example.json` when you stand up SweetLink elsewhere, and replace the Sweetistics domains with your own before committing. Downstream apps that previously imported from the `@sweetistics/sweetlink-*` packages should switch to the new `@sweetlink/*` scope; the exports and runtime semantics remain the same.
+
+### Migrating from the `@sweetistics/*` scope
+
+- Replace package imports (`@sweetistics/sweetlink`, `@sweetistics/sweetlink-daemon`, `@sweetistics/sweetlink-shared`) with the new names (`@sweetlink/cli`, `@sweetlink/daemon`, `@sweetlink/shared`) across your app, tests, and build tooling.
+- Update any `pnpm --filter` commands, tmux helpers, or scripts that referenced the old scope (for example `pnpm --filter @sweetlink/cli run build`).
+- Prefer the new environment variables for admin keys: `SWEETLINK_LOCAL_ADMIN_API_KEY` (dev shells) and `SWEETLINK_ADMIN_API_KEY` (prod shells). Legacy `SWEETISTICS_*` vars continue to work, but plan to remove them once every integration is updated.
+- Copy the neutral `sweetlink.example.json` from the repo root when onboarding SweetLink into another project so you start from generic hostnames/domains instead of the Sweetistics defaults.
 
 ### Config keys at a glance
 
+- `appLabel` – Friendly display name used in CLI help, prompts, and error messages. Set it via config, `--app-label`, or the `SWEETLINK_APP_LABEL` env; defaults to “your application”.
 - `appUrl` – Default URL SweetLink opens in dev mode. Pair it with `port` when your local server is not on 3000. CLI flags (`--url`, `--app-url`) or `SWEETLINK_APP_URL` override it.
-- `prodUrl` – Base URL for `--env prod` runs (smoke tests, screenshots). Falls back to the Sweetistics production URL when omitted.
+- `prodUrl` – Base URL for `--env prod` runs (smoke tests, screenshots). Falls back to the same origin as `appUrl` when omitted or when `SWEETLINK_PROD_URL` is unset.
 - `daemonUrl` – Location of the SweetLink daemon. Defaults to `https://localhost:4455`; override when you run the daemon remotely.
+- `adminKey` – Admin API key used when the CLI requests short-lived session tokens. Provide it via config/`--admin-key`, `SWEETLINK_LOCAL_ADMIN_API_KEY` (preferred for dev), `SWEETLINK_ADMIN_API_KEY` (prod), or the legacy `SWEETISTICS_*` variables for backwards compatibility.
 - `port` – Injected into `appUrl` when no explicit host is provided. Handy for per-service configs (`4100`, `5173`, etc.).
 - `healthChecks.paths` – Additional paths the CLI and watchdog probe before assuming the app is healthy. Include JSON APIs or custom `/healthz` endpoints to catch silent failures.
-- `cookieMappings` – List of `{ hosts, origins }` entries that teach SweetLink which Chrome profiles to harvest cookies from. Map every hostname your app serves (including wildcards) to the origins you need (auth providers, REST APIs, CDNs). SweetLink merges these with its built-in defaults.
+- `cookieMappings` – List of `{ hosts, origins }` entries that teach SweetLink which Chrome profiles to harvest cookies from. Map every hostname your app serves (including wildcards) to the origins you need (auth providers, REST APIs, CDNs). SweetLink combines these with the primary origin for the target URL; no extra domains are assumed automatically.
 - `smokeRoutes.defaults` – Ordered array of routes visited by `pnpm sweetlink smoke`. Include additional views or dashboards specific to your app.
 - `smokeRoutes.presets` – Named presets (`{ "admin": ["admin/users", "admin/settings"] }`) that become `pnpm sweetlink smoke --routes admin`.
 - `servers` – Optional list of commands that start/check your local server per environment. Useful when you want SweetLink to boot your app automatically before running automation.
@@ -118,7 +131,7 @@ SweetLink resolves paths relative to the current working directory (or uses abso
 Each automation module must export a single async function:
 
 ```ts
-import type { SweetLinkOauthAutomation } from '@sweetistics/sweetlink';
+import type { SweetLinkOauthAutomation } from '@sweetlink/cli';
 
 const automation: SweetLinkOauthAutomation = {
   async authorize(context) {
@@ -138,10 +151,10 @@ See the Twitter example for a complete script that works with X’s current cons
 Looking for a minimal integration? Launch the demo web app under `apps/sweetlink/examples/basic-web`:
 
 ```bash
-pnpm --filter @sweetistics/sweetlink-example-basic-web dev
+pnpm --filter @sweetlink/example-basic-web dev
 ```
 
-The Vite dev server auto-reloads whenever you tweak the example UI. The site exposes a single page with an “Enable SweetLink” button. Clicking it calls the included `/api/sweetlink/handshake` route, registers with your locally running daemon, and keeps the socket alive so you can attach via `pnpm sweetlink console demo`. The example bundles a small browser client that handles the `register`, `heartbeat`, and `runScript` command flow so you can verify end-to-end behaviour outside the main Sweetistics app.
+The Vite dev server auto-reloads whenever you tweak the example UI. The site exposes a single page with an “Enable SweetLink” button. Clicking it calls the included `/api/sweetlink/handshake` route, registers with your locally running daemon, and keeps the socket alive so you can attach via `pnpm sweetlink console demo`. The example bundles a small browser client that handles the `register`, `heartbeat`, and `runScript` command flow so you can verify end-to-end behaviour without touching your production app.
 
 Once attached, experiment with commands such as:
 
@@ -154,8 +167,8 @@ The demo exposes a handful of helpers on `window.demo` so you can script UI twea
 ## Local Checks
 
 ```bash
-pnpm --filter @sweetistics/sweetlink run lint
-pnpm --filter @sweetistics/sweetlink run test
+pnpm --filter @sweetlink/cli run lint
+pnpm --filter @sweetlink/cli run test
 ```
 
 Standalone repo:
@@ -167,4 +180,4 @@ pnpm test
 
 ## License
 
-The CLI inherits the Sweetistics repo license; consult `LICENSE` at the repo root before redistribution.
+The CLI inherits this monorepo’s license; consult `LICENSE` at the repo root before redistribution.

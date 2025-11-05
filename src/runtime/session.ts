@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '@sweetistics/sweetlink-shared';
-import { createSweetLinkCommandId, type SweetLinkCommandResult } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '@sweetlink/shared';
+import { createSweetLinkCommandId, type SweetLinkCommandResult } from '@sweetlink/shared';
 import { fetchJson } from '../http';
 import { fetchCliToken } from '../token';
 import type { CliConfig } from '../types';

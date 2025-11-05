@@ -38,7 +38,7 @@ describe('focusControlledChromePage', () => {
       bringToFront,
     });
 
-    const result = await focusControlledChromePage('http://127.0.0.1:9222', 'https://app.sweetistics.com');
+    const result = await focusControlledChromePage('http://127.0.0.1:9222', 'https://app.example.dev');
 
     expect(result).toBe(true);
     expect(connectMock).toHaveBeenCalledWith({}, 'http://127.0.0.1:9222', 3);
@@ -59,7 +59,7 @@ describe('focusControlledChromePage', () => {
     connectMock.mockResolvedValue(browser);
     resolveMock.mockResolvedValue(null);
 
-    const result = await focusControlledChromePage('http://127.0.0.1:9223', 'https://app.sweetistics.com/timeline');
+    const result = await focusControlledChromePage('http://127.0.0.1:9223', 'https://app.example.dev/timeline');
 
     expect(result).toBe(true);
     expect(browser.pages).toHaveBeenCalledTimes(1);
@@ -77,7 +77,7 @@ describe('focusControlledChromePage', () => {
     connectMock.mockResolvedValue(browser);
     resolveMock.mockResolvedValue(null);
 
-    const result = await focusControlledChromePage('http://127.0.0.1:9224', 'https://app.sweetistics.com/insights');
+    const result = await focusControlledChromePage('http://127.0.0.1:9224', 'https://app.example.dev/insights');
 
     expect(result).toBe(false);
     expect(disconnect).toHaveBeenCalledTimes(1);
@@ -86,7 +86,7 @@ describe('focusControlledChromePage', () => {
   it('returns false when the DevTools connection cannot be established', async () => {
     connectMock.mockResolvedValue(null);
 
-    const result = await focusControlledChromePage('http://127.0.0.1:9225', 'https://app.sweetistics.com/settings');
+    const result = await focusControlledChromePage('http://127.0.0.1:9225', 'https://app.example.dev/settings');
 
     expect(result).toBe(false);
   });

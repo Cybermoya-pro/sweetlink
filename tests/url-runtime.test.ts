@@ -3,7 +3,7 @@ import { buildWaitCandidateUrls, normalizeUrlForMatch, trimTrailingSlash, urlsRo
 
 describe('runtime/url utilities', () => {
   it('normalizes URLs and tolerates invalid input', () => {
-    expect(normalizeUrlForMatch('https://sweetistics.com/path')?.hostname).toBe('sweetistics.com');
+    expect(normalizeUrlForMatch('https://app.example.dev/path')?.hostname).toBe('app.example.dev');
     expect(normalizeUrlForMatch('not-a-url')).toBeNull();
     expect(normalizeUrlForMatch(undefined)).toBeNull();
   });
@@ -36,15 +36,15 @@ describe('runtime/url utilities', () => {
       ])
     );
 
-    const authCandidates = buildWaitCandidateUrls('https://app.sweetistics.com/auth');
-    expect(authCandidates).toContain('https://app.sweetistics.com/auth/signin');
+    const authCandidates = buildWaitCandidateUrls('https://app.example.dev/auth');
+    expect(authCandidates).toContain('https://app.example.dev/auth/signin');
 
-    const aliasCandidates = buildWaitCandidateUrls('https://app.sweetistics.com/insights?tab=main', [
-      'https://app.sweetistics.com/insights',
-      'https://app.sweetistics.com/insights/overview',
+    const aliasCandidates = buildWaitCandidateUrls('https://app.example.dev/insights?tab=main', [
+      'https://app.example.dev/insights',
+      'https://app.example.dev/insights/overview',
     ]);
     expect(aliasCandidates).toEqual(
-      expect.arrayContaining(['https://app.sweetistics.com/insights', 'https://app.sweetistics.com/insights/overview'])
+      expect.arrayContaining(['https://app.example.dev/insights', 'https://app.example.dev/insights/overview'])
     );
   });
 });

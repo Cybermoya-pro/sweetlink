@@ -17,10 +17,11 @@ This guide documents every supported key for the config file and environment ove
 
 | Key | Type | Description |
 | --- | --- | --- |
+| `appLabel` | string | Friendly display name used in CLI help, prompts, and diagnostics. CLI flag `--app-label` and `SWEETLINK_APP_LABEL` override it. |
 | `appUrl` | string | Base URL SweetLink uses for development runs (`--env dev`). CLI flag `--app-url` overrides it. |
-| `prodUrl` | string | Base URL for production runs (`--env prod`). |
+| `prodUrl` | string | Base URL for production runs (`--env prod`). Defaults to the same origin as `appUrl` unless `SWEETLINK_PROD_URL` or the config overrides it. |
 | `daemonUrl` | string | SweetLink daemon origin (defaults to `https://localhost:4455`). CLI flag `--daemon-url` overrides it. |
-| `adminKey` | string | Admin API key used for CLI token requests. You can also pass `--admin-key` or rely on `SWEETISTICS_LOCALHOST_API_KEY`. |
+| `adminKey` | string | Admin API key used for CLI token requests. Provide it via `--admin-key`, `SWEETLINK_LOCAL_ADMIN_API_KEY` (preferred), `SWEETLINK_ADMIN_API_KEY`, or the legacy `SWEETISTICS_*` variables. |
 | `port` | number | Convenience shortcut that rewrites the local `appUrl` port when `appUrl` itself is not specified. |
 | `cookieMappings` | array | Additional host/origin pairs SweetLink should copy cookies for. See below for the schema. |
 | `healthChecks.paths` | array | Extra HTTP paths (relative or absolute URLs) that SweetLink probes when checking server health. |
@@ -91,7 +92,7 @@ See `apps/sweetlink/examples/oauth/twitter-oauth-automation.ts` for a full examp
 
 Environment variables override config entries. Key ones include:
 
-- `SWEETLINK_APP_URL`, `SWEETLINK_DAEMON_URL`, `SWEETLINK_PROD_URL`
+- `SWEETLINK_APP_LABEL`, `SWEETLINK_APP_URL`, `SWEETLINK_DAEMON_URL`, `SWEETLINK_PROD_URL`
 - `SWEETLINK_OAUTH_SCRIPT`
 - `SWEETLINK_CA_PATH`, `SWEETLINK_CAROOT`
 - `SWEETLINK_DEBUG=1` (verbose logging)

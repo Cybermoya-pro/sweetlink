@@ -10,7 +10,7 @@ This demo shows how a plain web page can bootstrap a SweetLink session and talk 
 ## Running the demo
 
 ```bash
-pnpm --filter @sweetistics/sweetlink-example-basic-web dev
+pnpm --filter @sweetlink/example-basic-web dev
 ```
 
 The Vite dev server reloads automatically whenever you edit `src/main.ts` or `index.html`. Open `http://localhost:4000` and click **Enable SweetLink**. The page will:
@@ -36,8 +36,8 @@ All helpers live on `window.demo` for convenience. You can also click the “Pul
 To run the production bundle locally:
 
 ```bash
-pnpm --filter @sweetistics/sweetlink-example-basic-web build
-pnpm --filter @sweetistics/sweetlink-example-basic-web start
+pnpm --filter @sweetlink/example-basic-web build
+pnpm --filter @sweetlink/example-basic-web start
 ```
 
 This compiles the Express server (under `dist/server`) and serves the Vite output from `dist/client`.

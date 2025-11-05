@@ -24,6 +24,7 @@ export interface SweetLinkServerConfig {
 }
 
 export interface SweetLinkFileConfig {
+  appLabel?: string;
   appUrl?: string;
   prodUrl?: string;
   daemonUrl?: string;
@@ -97,6 +98,12 @@ function findConfigPath(initialDirectory: string): string | null {
 
 function normalizeConfig(raw: Record<string, unknown>, baseDirectory: string | null): SweetLinkFileConfig {
   const config: SweetLinkFileConfig = {};
+  if (typeof raw.appLabel === 'string') {
+    const trimmed = raw.appLabel.trim();
+    if (trimmed.length > 0) {
+      config.appLabel = trimmed;
+    }
+  }
   if (typeof raw.appUrl === 'string') {
     const trimmed = raw.appUrl.trim();
     if (trimmed.length > 0) {

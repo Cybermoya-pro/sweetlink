@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 import { defineConfig, type PluginOption } from 'vite';
-import { issueSweetLinkHandshake } from './server/handshake';
+import { issueSweetLinkHandshake } from './server/handshake.js';
 
 async function handleHandshakeRequest(_req: unknown, res: ServerResponse) {
   try {

@@ -1,4 +1,5 @@
 export interface CliConfig {
+  readonly appLabel: string;
   readonly appBaseUrl: string;
   readonly daemonBaseUrl: string;
   readonly adminApiKey: string | null;

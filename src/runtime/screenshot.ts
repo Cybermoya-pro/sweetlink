@@ -1,9 +1,10 @@
 import { writeFile } from 'node:fs/promises';
-import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetistics/sweetlink-shared';
+import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetlink/shared';
 import { runCodexImagePrompt, runCodexTextPrompt } from '../codex';
 import { fetchJson } from '../http';
 import type { CliConfig } from '../types';
 import { extractEventMessage, isErrnoException } from '../util/errors';
+import { describeAppForPrompt } from '../util/app-label';
 import { formatConsoleArg } from './devtools';
 import type { SweetLinkConsoleDump } from './session';
 
@@ -58,20 +59,20 @@ export type DevToolsRecoveryContext = {
   readonly suppressOutput: boolean;
   readonly logInfo: (...args: unknown[]) => void;
   readonly failureReason?: string | null;
+  readonly appLabel?: string;
 };
 
 export async function maybeDescribeScreenshot(
   prompt: string | undefined,
   imagePath: string,
-  options: { silent?: boolean } = {}
+  options: { silent?: boolean; appLabel?: string } = {}
 ): Promise<void> {
   const question = prompt?.trim();
   if (!question) {
     return;
   }
-  const combinedPrompt =
-    'You are analyzing a screenshot of a Sweetistics analytics website (treat it like a typical product dashboard). Inspect the image carefully before answering.\nQuestion: ' +
-    question;
+  const appDescription = describeAppForPrompt(options.appLabel);
+  const combinedPrompt = `You are analyzing a screenshot from ${appDescription} (treat it like a typical product dashboard). Inspect the image carefully before answering.\nQuestion: ${question}`;
   if (!options.silent) {
     console.log(`Asking Codex about screenshot: ${question}`);
   }
@@ -92,7 +93,7 @@ export async function maybeAnalyzeConsoleWithPrompt(
   prompt: string | undefined,
   selector: string,
   events: SweetLinkConsoleDump[],
-  options: { silent?: boolean } = {}
+  options: { silent?: boolean; appLabel?: string } = {}
 ): Promise<boolean> {
   const question = prompt?.trim();
   if (!question) {
@@ -109,8 +110,9 @@ export async function maybeAnalyzeConsoleWithPrompt(
         })
       : ['(no console events were captured after the click)'];
 
+  const appDescription = describeAppForPrompt(options.appLabel);
   const combinedPrompt =
-    `You are analyzing console output from a Sweetistics analytics website immediately after triggering a click on selector "${selector}". ` +
+    `You are analyzing console output from ${appDescription} immediately after triggering a click on selector "${selector}". ` +
     'Review the log lines below (most recent last) and answer the agent’s question.\n\n' +
     `Console output:\n${lines.join('\n')}\n\nQuestion: ${question}`;
 
@@ -164,7 +166,7 @@ export async function tryHtmlToImageFallback(
   }
 
   await persistScreenshotResult(outputPath, fallbackResult, { silent: suppressOutput });
-  await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+  await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: config.appLabel });
   return { handled: true };
 }
 
@@ -322,7 +324,7 @@ export async function tryDevToolsRecovery(context: DevToolsRecoveryContext): Pro
     );
   }
 
-  await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput });
+  await maybeDescribeScreenshot(prompt, outputPath, { silent: suppressOutput, appLabel: context.appLabel });
   return true;
 }
 

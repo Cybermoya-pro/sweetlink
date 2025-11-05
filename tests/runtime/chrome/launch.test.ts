@@ -71,7 +71,7 @@ describe('Chrome launch helpers', () => {
   it('spawns a foreground controlled Chrome window when requested on macOS', async () => {
     const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
 
-    await launchControlledChrome('https://app.sweetistics.com/timeline', {
+    await launchControlledChrome('https://app.example.dev/timeline', {
       cookieSync: false,
       foreground: true,
     });
@@ -85,7 +85,7 @@ describe('Chrome launch helpers', () => {
   it('launches controlled Chrome in the background by default on macOS', async () => {
     const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
 
-    await launchControlledChrome('https://app.sweetistics.com/insights', {
+    await launchControlledChrome('https://app.example.dev/insights', {
       cookieSync: false,
     });
 
@@ -99,15 +99,15 @@ describe('Chrome launch helpers', () => {
   it('passes the correct background flag for regular Chrome launches', async () => {
     const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
 
-    await launchChrome('https://app.sweetistics.com/timeline', { foreground: true });
+    await launchChrome('https://app.example.dev/timeline', { foreground: true });
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnCalls[0]?.command).toBe('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
-    expect(spawnCalls[0]?.args).toEqual(expect.arrayContaining(['--new-tab', 'https://app.sweetistics.com/timeline']));
+    expect(spawnCalls[0]?.args).toEqual(expect.arrayContaining(['--new-tab', 'https://app.example.dev/timeline']));
 
     spawnMock.mockClear();
     spawnCalls.length = 0;
 
-    await launchChrome('https://app.sweetistics.com/timeline');
+    await launchChrome('https://app.example.dev/timeline');
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(spawnCalls[0]?.command).toBe('open');
     expect(spawnCalls[0]?.args).toEqual(
@@ -121,7 +121,7 @@ describe('Chrome launch helpers', () => {
     const spec = prepareChromeLaunch(
       'darwin',
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      ['--new-tab', 'https://app.sweetistics.com'],
+      ['--new-tab', 'https://app.example.dev'],
       { background: true }
     );
 
@@ -133,7 +133,7 @@ describe('Chrome launch helpers', () => {
       '/Applications/Google Chrome.app',
       '--args',
       '--new-tab',
-      'https://app.sweetistics.com',
+      'https://app.example.dev',
     ]);
   });
 });

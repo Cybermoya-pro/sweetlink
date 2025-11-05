@@ -1,6 +1,8 @@
 import { createHmac, randomUUID } from 'node:crypto';
-import { sweetLinkEnv } from '@sweetistics/sweetlink-shared/env';
-import { resolveSweetLinkSecret } from '@sweetistics/sweetlink-shared/node';
+import { constants as fsConstants } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 export interface SweetLinkHandshakePayload {
   readonly sessionId: string;
@@ -12,9 +14,17 @@ export interface SweetLinkHandshakePayload {
 
 const SWEETLINK_SESSION_EXP_SECONDS = 60 * 5;
 const SWEETLINK_WS_PATH = '/bridge';
+const DEFAULT_SECRET_PATH = path.join(os.homedir(), '.sweetlink', 'secret.key');
+const DEFAULT_DAEMON_PORT = 4455;
 
 function resolveDaemonUrl(): string {
-  return sweetLinkEnv.daemonUrl;
+  const daemonUrl = readEnvString('SWEETLINK_DAEMON_URL');
+  if (daemonUrl) {
+    return daemonUrl;
+  }
+  const port = Number(readEnvString('SWEETLINK_PORT') ?? String(DEFAULT_DAEMON_PORT));
+  const safePort = Number.isFinite(port) && port > 0 ? port : DEFAULT_DAEMON_PORT;
+  return `https://localhost:${safePort}`;
 }
 
 function signSweetLinkToken(options: { secret: string; subject: string; sessionId: string; ttlSeconds: number }) {
@@ -33,10 +43,7 @@ function signSweetLinkToken(options: { secret: string; subject: string; sessionI
 }
 
 export async function issueSweetLinkHandshake(): Promise<SweetLinkHandshakePayload> {
-  const secretResolution = await resolveSweetLinkSecret({
-    autoCreate: true,
-    secretPath: sweetLinkEnv.secretPath,
-  });
+  const secretResolution = await resolveSweetLinkSecret();
   const sessionId = randomUUID();
 
   const sessionToken = signSweetLinkToken({
@@ -56,4 +63,41 @@ export async function issueSweetLinkHandshake(): Promise<SweetLinkHandshakePaylo
     expiresAt,
     secretSource: secretResolution.source,
   };
+}
+
+async function resolveSweetLinkSecret(): Promise<{ secret: string; source: string; path?: string }> {
+  const envSecret = readEnvString('SWEETLINK_SECRET');
+  if (envSecret && envSecret.length >= 32) {
+    return { secret: envSecret, source: 'env' };
+  }
+
+  const secretPath = readEnvString('SWEETLINK_SECRET_PATH') ?? DEFAULT_SECRET_PATH;
+  try {
+    const contents = await readFile(secretPath, 'utf8');
+    const trimmed = contents.trim();
+    if (trimmed.length >= 32) {
+      return { secret: trimmed, source: 'file', path: secretPath };
+    }
+  } catch (error) {
+    if (typeof error === 'object' && error && 'code' in error && error.code !== 'ENOENT') {
+      // eslint-disable-next-line no-console -- provide diagnostics for the demo operator
+      console.warn('Unable to read SweetLink secret, generating a new one.', error);
+    }
+  }
+
+  const generated = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
+  const dir = path.dirname(secretPath);
+  await mkdir(dir, { recursive: true });
+  await writeFile(secretPath, `${generated}\n`, { mode: fsConstants.S_IRUSR | fsConstants.S_IWUSR });
+  return { secret: generated, source: 'generated', path: secretPath };
+}
+
+function readEnvString(key: string): string | null {
+  // biome-ignore lint/style/noProcessEnv: demo app reads raw env for configurability
+  const raw = process.env[key];
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
