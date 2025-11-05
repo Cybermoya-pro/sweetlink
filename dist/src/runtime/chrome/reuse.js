@@ -6,7 +6,7 @@ import { discoverDevToolsEndpoints } from '../devtools/cdp';
 import { urlsRoughlyMatch } from '../url';
 import { primeControlledChromeCookies } from './cookies';
 import { connectPuppeteerBrowser, navigatePuppeteerPage } from './puppeteer';
-import { PUPPETEER_RELOAD_TIMEOUT_MS } from './reuse/constants';
+import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START, PUPPETEER_RELOAD_TIMEOUT_MS } from './reuse/constants';
 export async function reuseExistingControlledChrome(target, options) {
     const explicitDevtoolsUrl = cliEnv.devtoolsUrl?.trim();
     const existingConfig = await loadDevToolsConfig();
@@ -79,6 +79,14 @@ export async function reuseExistingControlledChrome(target, options) {
             if (!targetPageInfo) {
                 continue;
             }
+            if (options.bringToFront) {
+                try {
+                    await targetPageInfo.page.bringToFront();
+                }
+                catch (error) {
+                    logDebugError('Failed to focus reused controlled Chrome tab', error);
+                }
+            }
             const { context: cookieContext } = targetPageInfo;
             const userDataDirectoryHint = candidate.source === 'config' ? (existingConfig?.userDataDir ?? null) : null;
             const userDataDirectory = await persistDevToolsReuse(normalized, port, target, userDataDirectoryHint);
@@ -111,7 +119,7 @@ export async function reuseExistingControlledChrome(target, options) {
     }
     return null;
 }
-export async function findAvailablePort(start, end) {
+export async function findAvailablePort(start = DEVTOOLS_PORT_SCAN_START, end = DEVTOOLS_PORT_SCAN_END) {
     for (let port = start; port <= end; port += 1) {
         const available = await isPortAvailable(port);
         if (available) {

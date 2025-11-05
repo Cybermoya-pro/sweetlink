@@ -13,10 +13,8 @@ export async function loadDevToolsConfig() {
         return parsed;
     }
     catch (error) {
-        if (!isErrnoException(error) || error.code !== 'ENOENT') {
-            if (sweetLinkDebug) {
-                console.warn('Failed to read DevTools config:', error);
-            }
+        if (sweetLinkDebug && (!isErrnoException(error) || error.code !== 'ENOENT')) {
+            console.warn('Failed to read DevTools config:', error);
         }
         return null;
     }

@@ -1,18 +1,39 @@
-import { createSweetLinkSessionId, SWEETLINK_SESSION_EXP_SECONDS, SWEETLINK_WS_PATH, signSweetLinkToken, } from '@sweetistics/sweetlink-shared';
+import { createHmac, randomUUID } from 'node:crypto';
 import { sweetLinkEnv } from '@sweetistics/sweetlink-shared/env';
 import { resolveSweetLinkSecret } from '@sweetistics/sweetlink-shared/node';
+const SWEETLINK_SESSION_EXP_SECONDS = 60 * 5;
+const SWEETLINK_WS_PATH = '/bridge';
+function resolveDaemonUrl() {
+    return sweetLinkEnv.daemonUrl;
+}
+function signSweetLinkToken(options) {
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const payload = {
+        tokenId: randomUUID(),
+        scope: 'session',
+        sub: options.subject,
+        sessionId: options.sessionId,
+        issuedAt,
+        expiresAt: issuedAt + options.ttlSeconds,
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+    const signature = createHmac('sha256', options.secret).update(encodedPayload).digest('base64url');
+    return `${encodedPayload}.${signature}`;
+}
 export async function issueSweetLinkHandshake() {
-    const secretResolution = await resolveSweetLinkSecret({ autoCreate: true });
-    const sessionId = createSweetLinkSessionId();
+    const secretResolution = await resolveSweetLinkSecret({
+        autoCreate: true,
+        secretPath: sweetLinkEnv.secretPath,
+    });
+    const sessionId = randomUUID();
     const sessionToken = signSweetLinkToken({
         secret: secretResolution.secret,
-        scope: 'session',
         subject: 'sweetlink-example',
         ttlSeconds: SWEETLINK_SESSION_EXP_SECONDS,
         sessionId,
     });
     const expiresAt = Math.floor(Date.now() / 1000) + SWEETLINK_SESSION_EXP_SECONDS;
-    const socketUrl = `${sweetLinkEnv.daemonUrl}${SWEETLINK_WS_PATH}`;
+    const socketUrl = `${resolveDaemonUrl()}${SWEETLINK_WS_PATH}`;
     return {
         sessionId,
         sessionToken,

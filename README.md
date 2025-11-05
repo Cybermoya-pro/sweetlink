@@ -1,4 +1,4 @@
-# SweetLink
+# SweetLink 🍭
 
 **Connect your agent to your web app. Like Playwright, but works in your current tab. Close the loop.**
 
@@ -25,9 +25,34 @@ pnpm sweetlink open --controlled --path timeline/home --foreground
 
 # Capture a screenshot with fatal selector detection
 pnpm sweetlink screenshot greasy-teenager --selector '[data-sweetlink-target="timeline-activity-card"]'
+
+# Target a different host/port for one-off runs
+pnpm sweetlink open --url http://localhost:4100/timeline/home --controlled
 ```
 
 SweetLink expects a controlled Chrome window that exposes the DevTools protocol. The `open --controlled` command spins one up on demand, syncs cookies from your main profile (unless disabled), and registers the session with the daemon so follow-up commands reuse the same tab.
+
+## Configuration
+
+SweetLink resolves defaults in this order:
+
+1. CLI flags (`--url`, `--app-url`, `--daemon-url`, `--port`)
+2. `sweetlink.json` or `sweetlink.config.json` in your project
+3. Environment variables (`SWEETLINK_APP_URL`, `SWEETLINK_DAEMON_URL`, `SWEETLINK_PROD_URL`)
+4. Fallback `http://localhost:3000`
+
+Example `sweetlink.json`:
+
+```json
+{
+  "appUrl": "http://localhost:4100",
+  "prodUrl": "https://demo.acme.app",
+  "daemonUrl": "https://localhost:4455",
+  "port": 4100
+}
+```
+
+With the file in place, you can run `pnpm sweetlink open --controlled` and SweetLink will default to `http://localhost:4100` unless you override the URL on the command line.
 
 ## Agent integration tips
 

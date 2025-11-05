@@ -106,14 +106,12 @@ export async function attemptTwitterOauthAutoAccept(params) {
       }
       return buttonTexts.includes(text);
     };
-    const buttonElements = Array.from(
-      document.querySelectorAll('button, div[role="button"], a[role="button"], input[type="submit"]')
-    );
+    const buttonElements = [
+      ...document.querySelectorAll('button, div[role="button"], a[role="button"], input[type="submit"]'),
+    ];
     let target = buttonElements.find((candidate) => isMatch(candidate)) || null;
     if (!target) {
-      const forms = formSelectors
-        .map((selector) => Array.from(document.querySelectorAll(selector)))
-        .flat();
+      const forms = formSelectors.flatMap((selector) => [...document.querySelectorAll(selector)]);
       let fallbackForm = null;
       for (const form of forms) {
         const submitCandidate = form.querySelector('button, input[type="submit"], div[role="button"], a[role="button"]');
@@ -409,11 +407,13 @@ const twitterOauthAuthorizeEvaluator = () => {
         }
         return buttonTexts.includes(text) ? element : null;
     };
-    const buttons = Array.from(document.querySelectorAll('button, div[role="button"], a[role="button"], input[type="submit"]'));
-    let target = buttons.map((candidate) => matchButton(candidate)).find((candidate) => Boolean(candidate)) ??
+    const buttons = [...document.querySelectorAll('button, div[role="button"], a[role="button"], input[type="submit"]')];
+    let target = buttons.map((candidate) => matchButton(candidate)).find((candidate) => candidate !== null) ??
         null;
     if (!target) {
-        const forms = Array.from(document.querySelectorAll('form[action*="oauth" i], form[action*="authorize" i], form[action*="oauth/authorize" i]'));
+        const forms = [
+            ...document.querySelectorAll('form[action*="oauth" i], form[action*="authorize" i], form[action*="oauth/authorize" i]'),
+        ];
         let fallbackForm = null;
         for (const form of forms) {
             const submitCandidate = matchButton(form.querySelector('button, input[type="submit"], div[role="button"], a[role="button"]'));

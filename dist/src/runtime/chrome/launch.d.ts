@@ -1,8 +1,11 @@
-export declare function launchChrome(target: string): Promise<void>;
+export declare function launchChrome(target: string, options?: {
+    foreground?: boolean;
+}): Promise<void>;
 export declare function launchControlledChrome(target: string, options: {
     port?: number;
     cookieSync: boolean;
     headless?: boolean;
+    foreground?: boolean;
 }): Promise<{
     port: number;
     userDataDir: string;

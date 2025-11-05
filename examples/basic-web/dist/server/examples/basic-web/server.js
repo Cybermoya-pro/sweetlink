@@ -23,7 +23,22 @@ app.post('/api/sweetlink/handshake', async (_req, res) => {
 app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDir, 'index.html'));
 });
-const port = sweetLinkEnv.port ?? 4000;
+const resolveExamplePort = () => {
+    try {
+        const parsed = new URL(sweetLinkEnv.appUrl);
+        if (parsed.port) {
+            const candidate = Number(parsed.port);
+            if (Number.isFinite(candidate) && candidate > 0) {
+                return candidate;
+            }
+        }
+    }
+    catch {
+        // ignore parsing failures and fall back to the demo default
+    }
+    return 4000;
+};
+const port = resolveExamplePort();
 app.listen(port, () => {
     // eslint-disable-next-line no-console -- provide feedback for demo operators
     console.log(`SweetLink demo available at http://localhost:${port}`);

@@ -1,3 +1,4 @@
+import { uniq } from 'es-toolkit';
 import { sweetLinkDebug } from '../../env';
 import { delay } from '../../util/time';
 import { buildCookieOrigins, collectChromeCookies } from '../cookies';
@@ -74,7 +75,7 @@ export async function primeControlledChromeCookies(options) {
             .map((cookie) => (typeof cookie.name === 'string' ? cookie.name : null))
             .filter((name) => typeof name === 'string' && name.trim().length > 0);
         if (cookieNames.length > 0) {
-            const authCookies = [...new Set(cookieNames.filter((name) => /auth|session|token/i.test(name)))];
+            const authCookies = uniq(cookieNames.filter((name) => /auth|session|token/i.test(name)));
             if (authCookies.length > 0) {
                 console.log(`Detected likely auth cookies: ${authCookies.join(', ')}.`);
             }

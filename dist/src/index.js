@@ -4,15 +4,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSweetLinkCommandId, } from '@sweetistics/sweetlink-shared';
-import { Command, CommanderError } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
+import { uniq } from 'es-toolkit';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
 import { readRootProgramOptions, resolveConfig } from './core/config';
+import { loadSweetLinkFileConfig } from './core/config-file';
 import { readCommandOptions } from './core/env';
 import { cleanupControlledChromeRegistry, registerControlledChromeInstance } from './devtools-registry';
 import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env';
 import { fetchJson } from './http';
-import { collectPuppeteerDiagnostics, launchChrome, launchControlledChrome, prepareChromeLaunch, reuseExistingControlledChrome, signalSweetLinkBootstrap, waitForSweetLinkSession, } from './runtime/chrome';
+import { collectPuppeteerDiagnostics, focusControlledChromePage, launchChrome, launchControlledChrome, prepareChromeLaunch, reuseExistingControlledChrome, signalSweetLinkBootstrap, waitForSweetLinkSession, } from './runtime/chrome';
 import { buildCookieOrigins, collectChromeCookies, collectChromeCookiesForDomains, normalizePuppeteerCookie, } from './runtime/cookies';
 import { ensureDevStackRunning as ensureDevStackRunningRuntime, isAppReachable as isAppReachableRuntime, isDatabaseReachable as isDatabaseReachableRuntime, maybeInstallMkcertDispatcher, } from './runtime/devstack';
 import { attemptTwitterOauthAutoAccept, collectBootstrapDiagnostics, connectToDevTools, createEmptyDevToolsState, createNetworkEntryFromRequest, DEVTOOLS_CONSOLE_LIMIT, DEVTOOLS_NETWORK_LIMIT, DEVTOOLS_STATE_PATH, deriveDevtoolsLinkInfo, diagnosticsContainBlockingIssues, ensureBackgroundDevtoolsListener, fetchDevToolsTabs, formatConsoleArg, loadDevToolsConfig, loadDevToolsState, logBootstrapDiagnostics, saveDevToolsConfig, saveDevToolsState, serializeConsoleMessage, trimBuffer, } from './runtime/devtools';
@@ -58,11 +60,45 @@ const program = new Command();
 program.name('sweetlink').description('Interact with SweetLink daemon sessions');
 maybeInstallMkcertDispatcher();
 const LOOSE_PATH_SUFFIXES = new Set(['home', 'index', 'overview']);
-const { appUrl: defaultAppUrl, daemonUrl: defaultDaemonUrl, localAdminApiKey, adminApiKey: sharedAdminApiKey, prodAppUrl: defaultProdAppUrl, } = sweetLinkEnv;
+const { config: fileConfig } = loadSweetLinkFileConfig();
+const { appUrl: envAppUrl, daemonUrl: envDaemonUrl, localAdminApiKey, adminApiKey: sharedAdminApiKey, prodAppUrl: envProdAppUrl, } = sweetLinkEnv;
+const defaultAppUrl = deriveDefaultAppUrl(envAppUrl, fileConfig);
+const defaultProdAppUrl = fileConfig.prodUrl ?? envProdAppUrl;
+const defaultDaemonUrl = fileConfig.daemonUrl ?? envDaemonUrl;
+const defaultAdminKey = fileConfig.adminKey ?? localAdminApiKey ?? sharedAdminApiKey ?? '';
+const LOCAL_DEFAULT_APP_URL = 'http://localhost:3000';
+function deriveDefaultAppUrl(envUrl, config) {
+    if (config.appUrl) {
+        return config.appUrl;
+    }
+    if (typeof config.port === 'number' && Number.isFinite(config.port) && config.port > 0) {
+        return applyPortToUrl(envUrl ?? LOCAL_DEFAULT_APP_URL, config.port);
+    }
+    return envUrl ?? LOCAL_DEFAULT_APP_URL;
+}
+function applyPortToUrl(base, port) {
+    try {
+        const url = new URL(base);
+        url.port = String(port);
+        return url.toString();
+    }
+    catch {
+        return `http://localhost:${port}`;
+    }
+}
+function parseCliPort(value) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new CommanderError(1, 'InvalidPort', `--port expects a positive integer, received "${value}".`);
+    }
+    return parsed;
+}
 program
-    .option('-a, --app-url <url>', 'Sweetistics base URL', defaultAppUrl)
+    .option('-a, --app-url <url>', 'Application base URL for SweetLink commands', defaultAppUrl)
+    .option('--url <url>', 'Alias for --app-url')
+    .addOption(new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort))
     .option('-d, --daemon-url <url>', 'SweetLink daemon base URL', defaultDaemonUrl)
-    .option('-k, --admin-key <key>', 'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)', localAdminApiKey ?? sharedAdminApiKey ?? '');
+    .option('-k, --admin-key <key>', 'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)', defaultAdminKey);
 program
     .command('sessions')
     .description('List active SweetLink sessions')
@@ -129,7 +165,7 @@ program
     .argument('<domains...>', 'Domains or fully-qualified origins (e.g. localhost, https://sweetistics.com)')
     .option('--json', 'Output JSON instead of a human-readable list', false)
     .action(async (domains, options) => {
-    const uniqueDomains = [...new Set(domains.map((domain) => domain.trim()).filter(Boolean))];
+    const uniqueDomains = uniq(domains.map((domain) => domain.trim()).filter(Boolean));
     if (uniqueDomains.length === 0) {
         console.log('No domains provided; nothing to collect.');
         return;
@@ -195,12 +231,14 @@ program
     .description('Open Sweetistics in Chrome with SweetLink auto-enabled')
     .option('-e, --env <env>', 'Environment to open (dev or prod)', 'dev')
     .option('-p, --path <path>', 'Optional path to append (default "")', '')
+    .option('--url <url>', 'Explicit URL to open (overrides --path and --env)')
     .option('--controlled', 'Launch Chrome in controlled mode with DevTools enabled', false)
     .option('--devtools-port <port>', 'Specify DevTools port to use with --controlled', Number)
     .option('--no-cookie-sync', 'Disable copying cookies from your main Chrome profile into the controlled window', false)
     .option('--timeout <seconds>', 'Seconds to wait for a SweetLink session (default 15)', Number)
     .option('--no-devtools', 'Skip DevTools automation when opening in controlled mode')
     .option('--headless', 'Launch the controlled browser headlessly', false)
+    .option('--foreground', 'Bring the Chrome window to the foreground after opening (macOS only)', false)
     .action(async (options, command) => {
     await runOpenCommand(options, command, program);
 });
@@ -213,6 +251,9 @@ async function runOpenCommand(options, command, rootProgram) {
         if (options.headless) {
             console.log('--headless requires --controlled; launching a regular Chrome window instead.');
         }
+    }
+    if (context.headless && context.foreground) {
+        console.log('--foreground is ignored in headless mode.');
     }
     if (context.env === 'dev') {
         await ensureDevStackRunningRuntime(context.targetUrl, { repoRoot });
@@ -238,13 +279,15 @@ function buildOpenCommandContext(options, command, rootProgram) {
     const developmentBaseUrl = parentOptions.appUrl;
     const productionBaseUrl = defaultProdAppUrl;
     const baseUrl = env === 'prod' ? productionBaseUrl : developmentBaseUrl;
-    const targetUrl = buildOpenCommandTargetUrl(baseUrl, options.path);
+    const explicitTarget = resolveExplicitTargetUrl(options.url);
+    const targetUrl = explicitTarget ?? buildOpenCommandTargetUrl(baseUrl, options.path);
     const preferredPort = typeof options.devtoolsPort === 'number' && Number.isFinite(options.devtoolsPort)
         ? options.devtoolsPort
         : undefined;
     const controlled = Boolean(options.controlled);
     const enableDevtools = controlled ? options.devtools !== false : true;
     const headless = controlled ? Boolean(options.headless) : false;
+    const foreground = Boolean(options.foreground);
     return {
         config,
         env,
@@ -256,6 +299,7 @@ function buildOpenCommandContext(options, command, rootProgram) {
         targetUrlString: targetUrl.toString(),
         enableDevtools,
         headless,
+        foreground,
     };
 }
 function normalizeOpenCommandEnvironment(value) {
@@ -288,6 +332,24 @@ function buildOpenCommandTargetUrl(baseUrl, rawPath) {
         }
     }
     return targetUrl;
+}
+function resolveExplicitTargetUrl(raw) {
+    if (!raw) {
+        return null;
+    }
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+        return null;
+    }
+    try {
+        const target = new URL(trimmed);
+        target.searchParams.set('sweetlink', target.searchParams.get('sweetlink') ?? 'auto');
+        return target;
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to parse --url value "${trimmed}": ${message}`);
+    }
 }
 function resolveCookieSyncPreference(command, cookieSyncOption) {
     const source = command.getOptionValueSource?.('cookieSync');
@@ -333,6 +395,7 @@ async function handleControlledOpen(context, waitToken) {
         : await reuseExistingControlledChrome(context.targetUrlString, {
             preferredPort: context.preferredPort,
             cookieSync: context.shouldSyncCookies,
+            bringToFront: context.foreground,
         });
     if (reuseResult) {
         await handleControlledReuse(context, waitToken, reuseResult);
@@ -342,6 +405,7 @@ async function handleControlledOpen(context, waitToken) {
     await handleControlledLaunch(context, waitToken);
 }
 async function handleControlledReuse(context, waitToken, reuseResult) {
+    const shouldFocus = context.foreground && !context.headless;
     if (context.enableDevtools) {
         await registerControlledChromeInstance(reuseResult.devtoolsUrl, reuseResult.userDataDir);
         await cleanupControlledChromeRegistry(reuseResult.devtoolsUrl);
@@ -377,6 +441,15 @@ async function handleControlledReuse(context, waitToken, reuseResult) {
     if (context.enableDevtools) {
         console.log('The screenshot command will continue to use this DevTools instance.');
     }
+    if (shouldFocus && context.enableDevtools) {
+        const focused = await focusControlledChromePage(reuseResult.devtoolsUrl, context.targetUrlString);
+        if (!focused && sweetLinkDebug) {
+            console.warn('Unable to focus controlled Chrome window automatically.');
+        }
+    }
+    else if (context.foreground && !context.enableDevtools) {
+        console.log('--foreground requires DevTools automation; skipping automatic focus.');
+    }
     console.log('Remember this session codename. Run `pnpm sweetlink sessions`, copy the session id or codename, and use that handle for every follow-up command instead of rerunning `pnpm sweetlink open`.');
     await waitForSessionAfterOpen(context, waitToken, {
         devtoolsUrl: context.enableDevtools ? reuseResult.devtoolsUrl : undefined,
@@ -396,6 +469,7 @@ async function handleControlledLaunch(context, waitToken) {
         port: context.preferredPort,
         cookieSync: context.shouldSyncCookies,
         headless: context.headless,
+        foreground: context.foreground,
     });
     const userDataDirectoryDisplay = info.userDataDir.replace(os.homedir(), '~');
     if (context.enableDevtools) {
@@ -431,6 +505,16 @@ async function handleControlledLaunch(context, waitToken) {
     }
     if (context.headless) {
         console.log('Running in headless mode (--headless).');
+    }
+    const shouldFocus = context.foreground && !context.headless;
+    if (shouldFocus && context.enableDevtools) {
+        const focused = await focusControlledChromePage(info.devtoolsUrl, context.targetUrlString);
+        if (!focused && sweetLinkDebug) {
+            console.warn('Unable to focus controlled Chrome window automatically.');
+        }
+    }
+    else if (context.foreground && !context.enableDevtools) {
+        console.log('--foreground requires DevTools automation; skipping automatic focus.');
     }
     await waitForSessionAfterOpen(context, waitToken, {
         devtoolsUrl: context.enableDevtools ? info.devtoolsUrl : undefined,
@@ -522,7 +606,7 @@ async function waitForSessionAfterOpen(context, waitToken, options) {
     }
 }
 async function handleUncontrolledOpen(context, waitToken) {
-    await launchChrome(context.targetUrlString);
+    await launchChrome(context.targetUrlString, { foreground: context.foreground });
     console.log(`Opened Chrome to ${context.targetUrlString} (env: ${context.env}).`);
     await waitForSessionAfterOpen(context, waitToken, {
         failureMessage: 'Chrome tab opened but SweetLink did not register within the timeout window. Use `pnpm sweetlink sessions` to inspect manually.',

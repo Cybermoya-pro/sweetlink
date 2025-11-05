@@ -11,12 +11,14 @@ import {
   type SweetLinkScreenshotRenderer,
   type SweetLinkSelectorCandidate,
 } from '@sweetistics/sweetlink-shared';
-import { Command, CommanderError } from 'commander';
+import { Command, CommanderError, Option } from 'commander';
 import { uniq } from 'es-toolkit';
 import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
 import { readRootProgramOptions, resolveConfig } from './core/config';
+import { loadSweetLinkFileConfig } from './core/config-file';
+import type { SweetLinkFileConfig } from './core/config-file';
 import { readCommandOptions } from './core/env';
 import { cleanupControlledChromeRegistry, registerControlledChromeInstance } from './devtools-registry';
 import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env';
@@ -148,17 +150,54 @@ program.name('sweetlink').description('Interact with SweetLink daemon sessions')
 maybeInstallMkcertDispatcher();
 
 const LOOSE_PATH_SUFFIXES: ReadonlySet<string> = new Set(['home', 'index', 'overview']);
+const { config: fileConfig } = loadSweetLinkFileConfig();
 const {
-  appUrl: defaultAppUrl,
-  daemonUrl: defaultDaemonUrl,
+  appUrl: envAppUrl,
+  daemonUrl: envDaemonUrl,
   localAdminApiKey,
   adminApiKey: sharedAdminApiKey,
-  prodAppUrl: defaultProdAppUrl,
+  prodAppUrl: envProdAppUrl,
 } = sweetLinkEnv;
+
+const defaultAppUrl = deriveDefaultAppUrl(envAppUrl, fileConfig);
+const defaultProdAppUrl = fileConfig.prodUrl ?? envProdAppUrl;
+const defaultDaemonUrl = fileConfig.daemonUrl ?? envDaemonUrl;
+const defaultAdminKey = fileConfig.adminKey ?? localAdminApiKey ?? sharedAdminApiKey ?? '';
+
+const LOCAL_DEFAULT_APP_URL = 'http://localhost:3000';
+
+function deriveDefaultAppUrl(envUrl: string, config: SweetLinkFileConfig): string {
+  if (config.appUrl) {
+    return config.appUrl;
+  }
+  if (typeof config.port === 'number' && Number.isFinite(config.port) && config.port > 0) {
+    return applyPortToUrl(envUrl ?? LOCAL_DEFAULT_APP_URL, config.port);
+  }
+  return envUrl ?? LOCAL_DEFAULT_APP_URL;
+}
+
+function applyPortToUrl(base: string, port: number): string {
+  try {
+    const url = new URL(base);
+    url.port = String(port);
+    return url.toString();
+  } catch {
+    return `http://localhost:${port}`;
+  }
+}
+
+function parseCliPort(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new CommanderError(1, 'InvalidPort', `--port expects a positive integer, received "${value}".`);
+  }
+  return parsed;
+}
 
 interface OpenCommandOptions {
   env?: string;
   path?: string;
+  url?: string;
   controlled?: boolean;
   devtoolsPort?: number;
   cookieSync?: boolean;
@@ -183,12 +222,14 @@ interface OpenCommandContext {
 }
 
 program
-  .option('-a, --app-url <url>', 'Sweetistics base URL', defaultAppUrl)
+  .option('-a, --app-url <url>', 'Application base URL for SweetLink commands', defaultAppUrl)
+  .option('--url <url>', 'Alias for --app-url')
+  .addOption(new Option('--port <number>', 'Override local app port (defaults to config or 3000)').argParser(parseCliPort))
   .option('-d, --daemon-url <url>', 'SweetLink daemon base URL', defaultDaemonUrl)
   .option(
     '-k, --admin-key <key>',
     'Optional admin API key (defaults to SWEETISTICS_LOCALHOST_API_KEY or SWEETISTICS_API_KEY env)',
-    localAdminApiKey ?? sharedAdminApiKey ?? ''
+    defaultAdminKey
   );
 
 program
@@ -349,6 +390,7 @@ program
   .description('Open Sweetistics in Chrome with SweetLink auto-enabled')
   .option('-e, --env <env>', 'Environment to open (dev or prod)', 'dev')
   .option('-p, --path <path>', 'Optional path to append (default "")', '')
+  .option('--url <url>', 'Explicit URL to open (overrides --path and --env)')
   .option('--controlled', 'Launch Chrome in controlled mode with DevTools enabled', false)
   .option('--devtools-port <port>', 'Specify DevTools port to use with --controlled', Number)
   .option('--no-cookie-sync', 'Disable copying cookies from your main Chrome profile into the controlled window', false)
@@ -405,7 +447,8 @@ function buildOpenCommandContext(
   const developmentBaseUrl = parentOptions.appUrl;
   const productionBaseUrl = defaultProdAppUrl;
   const baseUrl = env === 'prod' ? productionBaseUrl : developmentBaseUrl;
-  const targetUrl = buildOpenCommandTargetUrl(baseUrl, options.path);
+  const explicitTarget = resolveExplicitTargetUrl(options.url);
+  const targetUrl = explicitTarget ?? buildOpenCommandTargetUrl(baseUrl, options.path);
   const preferredPort =
     typeof options.devtoolsPort === 'number' && Number.isFinite(options.devtoolsPort)
       ? options.devtoolsPort
@@ -459,6 +502,24 @@ function buildOpenCommandTargetUrl(baseUrl: string, rawPath?: string): URL {
     }
   }
   return targetUrl;
+}
+
+function resolveExplicitTargetUrl(raw?: string): URL | null {
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  try {
+    const target = new URL(trimmed);
+    target.searchParams.set('sweetlink', target.searchParams.get('sweetlink') ?? 'auto');
+    return target;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse --url value "${trimmed}": ${message}`);
+  }
 }
 
 function resolveCookieSyncPreference(command: Command, cookieSyncOption?: boolean): boolean {

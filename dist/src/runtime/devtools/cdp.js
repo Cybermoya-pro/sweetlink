@@ -3,6 +3,7 @@ import { WebSocket } from 'undici';
 import { sweetLinkDebug } from '../../env';
 import { describeUnknown, extractEventMessage } from '../../util/errors';
 import { delay } from '../../util/time';
+import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START } from '../chrome/reuse/constants';
 import { urlsRoughlyMatch } from '../url';
 const isDevToolsResponse = (value) => {
     if (typeof value !== 'object' || value === null) {
@@ -93,7 +94,7 @@ export async function collectBootstrapDiagnostics(devtoolsUrl, candidates) {
 }
 export async function discoverDevToolsEndpoints() {
     const endpoints = [];
-    for (let port = 9222; port <= 9322; port += 1) {
+    for (let port = DEVTOOLS_PORT_SCAN_START; port <= DEVTOOLS_PORT_SCAN_END; port += 1) {
         const baseUrl = `http://127.0.0.1:${port}`;
         try {
             const response = await fetch(`${baseUrl}/json/version`, { method: 'GET' });
@@ -114,12 +115,11 @@ export async function fetchDevToolsTabs(devtoolsUrl) {
     }
     const payload = (await response.json());
     if (!Array.isArray(payload)) {
-        throw new Error('DevTools endpoint returned unexpected payload');
+        throw new TypeError('DevTools endpoint returned unexpected payload');
     }
-    return payload
-        .map((entry) => {
+    return payload.flatMap((entry) => {
         if (!entry || typeof entry !== 'object') {
-            return null;
+            return [];
         }
         const record = entry;
         const id = typeof record.id === 'string' ? record.id : null;
@@ -128,11 +128,10 @@ export async function fetchDevToolsTabs(devtoolsUrl) {
         const type = typeof record.type === 'string' ? record.type : undefined;
         const webSocketDebuggerUrl = typeof record.webSocketDebuggerUrl === 'string' ? record.webSocketDebuggerUrl : undefined;
         if (!id || !url) {
-            return null;
+            return [];
         }
-        return { id, title, url, type, webSocketDebuggerUrl };
-    })
-        .filter((entry) => Boolean(entry));
+        return [{ id, title, url, type, webSocketDebuggerUrl }];
+    });
 }
 export async function fetchDevToolsTabsWithRetry(devtoolsUrl, attempts = 5) {
     const ECONNREFUSED_PATTERN = /ECONNREFUSED/;

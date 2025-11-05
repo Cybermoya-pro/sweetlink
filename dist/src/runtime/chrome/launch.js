@@ -7,19 +7,20 @@ import { saveDevToolsConfig } from '../devtools';
 import { primeControlledChromeCookies } from './cookies';
 import { findAvailablePort } from './reuse';
 const DEFAULT_MAC_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-export async function launchChrome(target) {
+export async function launchChrome(target, options = {}) {
     const chromePath = cliEnv.chromePath ?? DEFAULT_MAC_CHROME;
     if (!existsSync(chromePath)) {
         throw new Error(`Google Chrome is required but was not found at "${chromePath}". Set SWEETLINK_CHROME_PATH to override the location.`);
     }
-    await spawnChromeDetached(chromePath, ['--new-tab', target], { background: process.platform === 'darwin' });
+    const background = process.platform === 'darwin' && options.foreground !== true;
+    await spawnChromeDetached(chromePath, ['--new-tab', target], { background });
 }
 export async function launchControlledChrome(target, options) {
     const chromePath = cliEnv.chromePath ?? DEFAULT_MAC_CHROME;
     if (!existsSync(chromePath)) {
         throw new Error(`Google Chrome is required but was not found at "${chromePath}". Set SWEETLINK_CHROME_PATH to override the location.`);
     }
-    const port = options.port && !Number.isNaN(options.port) ? options.port : await findAvailablePort(9222, 9322);
+    const port = options.port && !Number.isNaN(options.port) ? options.port : await findAvailablePort();
     const userDataDirectory = path.join(os.tmpdir(), `sweetlink-chrome-${port}-${Date.now()}`);
     mkdirSync(userDataDirectory, { recursive: true });
     const args = [
@@ -35,7 +36,8 @@ export async function launchControlledChrome(target, options) {
     if (options.headless) {
         args.push('--headless=new', '--disable-gpu', '--hide-scrollbars');
     }
-    await spawnChromeDetached(chromePath, args, { background: process.platform === 'darwin' });
+    const background = process.platform === 'darwin' && options.foreground !== true;
+    await spawnChromeDetached(chromePath, args, { background });
     const devtoolsUrl = `http://127.0.0.1:${port}`;
     await saveDevToolsConfig({
         devtoolsUrl,
