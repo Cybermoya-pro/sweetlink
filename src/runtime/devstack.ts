@@ -1,10 +1,10 @@
-import { type SpawnOptions, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { Agent, setGlobalDispatcher } from 'undici';
-import { readLocalEnvString } from '../core/env';
+import type { ServerConfig } from '../types';
 import { cliEnv, sweetLinkDebug } from '../env';
 import { extractEventMessage } from '../util/errors';
 import { formatPathForDisplay } from '../util/path';
@@ -12,8 +12,8 @@ import { delay } from '../util/time';
 
 /** Registers the mkcert CA with undici so HTTPS requests succeed without NODE_TLS_REJECT_UNAUTHORIZED hacks. */
 export function maybeInstallMkcertDispatcher(): void {
-  const overridePath = cliEnv.caPath;
-  const mkcertRoot = cliEnv.caRoot;
+  const overridePath = cliEnv.caPath ?? null;
+  const mkcertRoot = cliEnv.caRoot ?? path.join(os.homedir(), 'Library', 'Application Support', 'mkcert');
   const candidates = [
     overridePath,
     path.join(mkcertRoot, 'rootCA.pem'),
@@ -37,52 +37,54 @@ export function maybeInstallMkcertDispatcher(): void {
   }
 }
 
-/** Ensures the local dev server and database are online, attempting to start them via runner when needed. */
-export async function ensureDevStackRunning(
-  targetUrl: URL,
-  options: { repoRoot: string; healthPaths?: readonly string[] }
-): Promise<void> {
+interface EnsureDevStackOptions {
+  readonly repoRoot: string;
+  readonly healthPaths?: readonly string[];
+  readonly server?: ServerConfig;
+}
+
+/** Ensures the local dev server is online, optionally attempting to start it via configured command. */
+export async function ensureDevStackRunning(targetUrl: URL, options: EnsureDevStackOptions): Promise<void> {
   const appOrigin = targetUrl.origin;
-  const [appReady, dbReady] = await Promise.all([
-    isAppReachable(appOrigin, options.healthPaths),
-    isDatabaseReachable(),
-  ]);
-  if (appReady && dbReady) {
+  const checkTimeout = options.server?.timeoutMs ?? 30_000;
+
+  const isHealthy = async (): Promise<boolean> => {
+    if (options.server?.check) {
+      const ok = await runCheckCommand(options.server, options.repoRoot);
+      if (ok) {
+        return true;
+      }
+    }
+    return await isAppReachable(appOrigin, options.healthPaths);
+  };
+
+  if (await isHealthy()) {
     return;
   }
 
-  const developmentSessionRunning = await isDevTmuxSessionActive();
-  if (!developmentSessionRunning) {
-    console.log('Detected dev stack offline. Starting `pnpm run dev` via runner…');
+  if (options.server?.start) {
+    console.log('Detected dev stack offline. Running configured start command…');
     try {
-      const runnerPath = path.join(options.repoRoot, 'runner');
-      const exitCode = await runCommand(runnerPath, ['pnpm', 'run', 'dev'], { cwd: options.repoRoot });
-      if (exitCode !== 0) {
-        console.warn(`runner pnpm run dev exited with code ${exitCode}. Continuing startup check.`);
-      }
+      launchStartCommand(options.server, options.repoRoot);
     } catch (error) {
       console.warn('Failed to launch dev stack automatically:', extractEventMessage(error));
     }
-  } else if (sweetLinkDebug) {
-    console.log('Dev stack tmux session detected; waiting for readiness without restarting.');
+  } else {
+    console.warn('Dev stack appears offline and no start command is configured. Start it manually.');
+    return;
   }
 
-  const timeoutMs = 90_000;
-  const deadline = Date.now() + timeoutMs;
+  const deadline = Date.now() + checkTimeout;
   while (Date.now() < deadline) {
-    const [readyApp, readyDb] = await Promise.all([
-      isAppReachable(appOrigin, options.healthPaths),
-      isDatabaseReachable(),
-    ]);
-    if (readyApp && readyDb) {
-      console.log('Dev stack is online (web + database).');
+    if (await isHealthy()) {
+      console.log('Dev stack is online.');
       return;
     }
     await delay(1000);
   }
 
   console.warn(
-    'Dev stack did not become ready within 90s. Expect follow-up commands to fail until `pnpm run dev` finishes booting.'
+    `Dev stack did not become ready within ${Math.round(checkTimeout / 1000)}s. Expect follow-up commands to fail until the server finishes booting.`
   );
 }
 
@@ -100,8 +102,8 @@ export async function isAppReachable(appBaseUrl: string, healthPaths?: readonly 
           ? new URL(trimmed)
           : new URL(trimmed.startsWith('/') ? trimmed : `/${trimmed}`, appBaseUrl);
         targets.add(target.toString());
-      } catch (error) {
-        void error;
+      } catch {
+        /* ignore invalid URLs */
       }
     }
   }
@@ -133,108 +135,56 @@ export async function isAppReachable(appBaseUrl: string, healthPaths?: readonly 
   return false;
 }
 
-/** Checks common Postgres ports to see if the local database is reachable. */
-export async function isDatabaseReachable(): Promise<boolean> {
-  const ports = resolveCandidateDbPorts();
-  if (ports.length === 0) {
+async function runCheckCommand(server: ServerConfig, repoRoot: string): Promise<boolean> {
+  const checkArgs = server.check;
+  if (!checkArgs || checkArgs.length === 0) {
     return false;
   }
-  for (const port of ports) {
-    if (await isTcpPortReachable('127.0.0.1', port)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function resolveCandidateDbPorts(): number[] {
-  const ports = new Set<number>();
-  const addPort = (value: unknown) => {
-    const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      ports.add(parsed);
-    }
-  };
-
-  addPort(readLocalEnvString('SWEETISTICS_LOCAL_POSTGRES_PORT'));
-  const directUrl = readLocalEnvString('DIRECT_DATABASE_URL') ?? readLocalEnvString('DATABASE_URL');
-  if (directUrl) {
-    try {
-      const parsed = new URL(directUrl);
-      if (parsed.port) {
-        addPort(parsed.port);
-      }
-    } catch {
-      /* ignore malformed env URLs */
-    }
-  }
-  addPort(5432);
-  addPort(6432);
-  return [...ports];
-}
-
-async function runCommand(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: 'inherit', ...options });
-    child.once('error', (error) => reject(error));
-    child.once('close', (code) => resolve(code ?? 0));
-  });
-}
-
-async function isDevTmuxSessionActive(): Promise<boolean> {
-  const sessions = await listTmuxSessions();
-  if (!sessions) {
+  const command = checkArgs[0];
+  if (!command) {
     return false;
   }
-  return sessions.some((session) => session === 'sweetistics-dev' || session.startsWith('sweetistics-dev-'));
-}
-
-async function listTmuxSessions(): Promise<string[] | null> {
-  return await new Promise((resolve) => {
+  const args = checkArgs.slice(1);
+  const cwd = server.cwd ?? repoRoot;
+  return await new Promise<boolean>((resolve) => {
     try {
-      const child = spawn('tmux', ['list-sessions', '-F', '#S'], {
-        stdio: ['ignore', 'pipe', 'ignore'],
+      const child: ChildProcess = spawn(command, args, {
+        cwd,
+        stdio: 'ignore',
       });
-      const names: string[] = [];
-      child.stdout?.on('data', (chunk: Buffer) => {
-        const text = chunk.toString('utf8');
-        for (const line of text.split(/\r?\n/)) {
-          const trimmed = line.trim();
-          if (trimmed.length > 0) {
-            names.push(trimmed);
-          }
-        }
+      const timer = setTimeout(() => {
+        child.kill();
+        resolve(false);
+      }, 5000);
+      child.once('error', () => {
+        clearTimeout(timer);
+        resolve(false);
       });
-      child.once('error', () => resolve(null));
-      child.once('close', (code) => {
-        if (code !== 0) {
-          resolve(null);
-          return;
-        }
-        resolve(names);
+      child.once('close', (code: number | null) => {
+        clearTimeout(timer);
+        resolve(code === 0);
       });
     } catch {
-      resolve(null);
+      resolve(false);
     }
   });
 }
 
-async function isTcpPortReachable(host: string, port: number, timeoutMs = 1000): Promise<boolean> {
-  if (!Number.isFinite(port) || port <= 0) {
-    return false;
+function launchStartCommand(server: ServerConfig, repoRoot: string): void {
+  const startArgs = server.start;
+  if (!startArgs || startArgs.length === 0) {
+    return;
   }
-  return await new Promise((resolve) => {
-    const socket = net.createConnection({ host, port, timeout: timeoutMs }, () => {
-      socket.end();
-      resolve(true);
-    });
-    socket.once('error', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.once('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
+  const command = startArgs[0];
+  if (!command) {
+    return;
+  }
+  const args = startArgs.slice(1);
+  const cwd = server.cwd ?? repoRoot;
+  const child: ChildProcess = spawn(command, args, {
+    cwd,
+    stdio: sweetLinkDebug ? 'inherit' : 'ignore',
+    detached: true,
   });
+  child.unref();
 }

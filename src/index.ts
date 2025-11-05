@@ -43,7 +43,6 @@ import {
 import {
   ensureDevStackRunning as ensureDevStackRunningRuntime,
   isAppReachable as isAppReachableRuntime,
-  isDatabaseReachable as isDatabaseReachableRuntime,
   maybeInstallMkcertDispatcher,
 } from './runtime/devstack';
 import {
@@ -109,7 +108,7 @@ import {
 import { buildWaitCandidateUrls, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url';
 import { buildScreenshotHooks } from './screenshot-hooks';
 import { fetchCliToken } from './token';
-import type { CliConfig } from './types';
+import type { CliConfig, ServerConfig } from './types';
 import { extractEventMessage, isErrnoException, logDebugError } from './util/errors';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -222,6 +221,7 @@ interface OpenCommandContext {
   readonly foreground: boolean;
   readonly healthCheckPaths: readonly string[] | null;
   readonly oauthScriptPath: string | null;
+  readonly serverConfig: ServerConfig | null;
 }
 
 program
@@ -428,13 +428,14 @@ async function runOpenCommand(options: OpenCommandOptions, command: Command, roo
     await ensureDevStackRunningRuntime(context.targetUrl, {
       repoRoot,
       healthPaths: context.healthCheckPaths ?? undefined,
+      server: context.serverConfig ?? undefined,
     });
   }
 
   const waitToken = await fetchWaitTokenIfNeeded(context);
-  const reachability = await checkOpenCommandReachability(context);
-  if (!reachability.appReachable || !reachability.dbReachable) {
-    logOpenCommandReachabilityErrors(context, reachability);
+  const appReachable = await checkOpenCommandReachability(context);
+  if (!appReachable) {
+    logOpenCommandReachabilityErrors(context);
     process.exitCode = 1;
     return;
   }
@@ -461,6 +462,7 @@ function buildOpenCommandContext(
   const baseUrl = env === 'prod' ? productionBaseUrl : developmentBaseUrl;
   const explicitTarget = resolveExplicitTargetUrl(options.url);
   const targetUrl = explicitTarget ?? buildOpenCommandTargetUrl(baseUrl, options.path);
+  const serverConfig = config.servers[env] ?? null;
   const preferredPort =
     typeof options.devtoolsPort === 'number' && Number.isFinite(options.devtoolsPort)
       ? options.devtoolsPort
@@ -483,6 +485,7 @@ function buildOpenCommandContext(
     foreground,
     healthCheckPaths: defaultHealthPaths,
     oauthScriptPath: config.oauthScriptPath,
+    serverConfig,
   };
 }
 
@@ -563,28 +566,12 @@ async function fetchWaitTokenIfNeeded(context: OpenCommandContext): Promise<stri
   }
 }
 
-interface ReachabilityState {
-  readonly appReachable: boolean;
-  readonly dbReachable: boolean;
+async function checkOpenCommandReachability(context: OpenCommandContext): Promise<boolean> {
+  return await isAppReachableRuntime(context.targetUrl.origin, context.healthCheckPaths ?? undefined);
 }
 
-async function checkOpenCommandReachability(context: OpenCommandContext): Promise<ReachabilityState> {
-  const appReachable = await isAppReachableRuntime(context.targetUrl.origin, context.healthCheckPaths ?? undefined);
-  const dbReachable = context.env === 'dev' ? await isDatabaseReachableRuntime() : true;
-  return { appReachable, dbReachable };
-}
-
-function logOpenCommandReachabilityErrors(context: OpenCommandContext, reachability: ReachabilityState): void {
-  if (!reachability.appReachable) {
-    console.error(
-      `${context.targetUrl.origin} did not respond. Start the web app with "pnpm dev" from the Sweetistics repository root and retry.`
-    );
-  }
-  if (!reachability.dbReachable) {
-    console.error(
-      'Local Postgres is unreachable. Run `pnpm run dev` (or ensure Docker/local Postgres is online) before continuing.'
-    );
-  }
+function logOpenCommandReachabilityErrors(context: OpenCommandContext): void {
+  console.error(`${context.targetUrl.origin} did not respond. Start the web application and retry.`);
 }
 
 async function handleControlledOpen(context: OpenCommandContext, waitToken: string | null): Promise<void> {

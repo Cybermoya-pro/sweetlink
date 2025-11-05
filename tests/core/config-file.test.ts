@@ -56,6 +56,15 @@ describe('core/config-file', () => {
             custom: ['foo', 'bar'],
           },
         },
+        servers: [
+          {
+            env: 'dev',
+            start: ['pnpm', 'run', 'dev'],
+            check: ['curl', '--fail', 'http://localhost:4100/api/health'],
+            timeoutMs: 45_000,
+            cwd: './apps/web',
+          },
+        ],
       }),
       'utf8'
     );
@@ -83,7 +92,43 @@ describe('core/config-file', () => {
           custom: ['foo', 'bar'],
         },
       },
+      servers: [
+        {
+          env: 'dev',
+          start: ['pnpm', 'run', 'dev'],
+          check: ['curl', '--fail', 'http://localhost:4100/api/health'],
+          timeoutMs: 45_000,
+          cwd: path.join(process.cwd(), 'apps', 'web'),
+        },
+      ],
     });
+  });
+
+  it('normalizes dev server commands when provided as strings', () => {
+    const filePath = path.join(process.cwd(), 'sweetlink.json');
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        servers: [
+          {
+            env: 'dev',
+            start: 'pnpm run dev',
+            check: 'curl --fail http://localhost:3000/api/health',
+          },
+        ],
+      }),
+      'utf8'
+    );
+
+    const loaded = loadSweetLinkFileConfig();
+    expect(loaded.config.servers).toEqual([
+      {
+        env: 'dev',
+        start: ['sh', '-c', 'pnpm run dev'],
+        check: ['sh', '-c', 'curl --fail http://localhost:3000/api/health'],
+        cwd: process.cwd(),
+      },
+    ]);
   });
 
   it('returns empty config and warns when JSON is invalid', () => {

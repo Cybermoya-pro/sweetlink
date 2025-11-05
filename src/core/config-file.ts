@@ -15,6 +15,14 @@ export interface SweetLinkSmokeRoutesConfig {
   presets?: Record<string, string[]>;
 }
 
+export interface SweetLinkServerConfig {
+  env: string;
+  start?: string[];
+  check?: string[];
+  cwd?: string;
+  timeoutMs?: number;
+}
+
 export interface SweetLinkFileConfig {
   appUrl?: string;
   prodUrl?: string;
@@ -24,6 +32,7 @@ export interface SweetLinkFileConfig {
   cookieMappings?: SweetLinkCookieMapping[];
   healthChecks?: SweetLinkHealthChecksConfig;
   smokeRoutes?: SweetLinkSmokeRoutesConfig;
+  servers?: SweetLinkServerConfig[];
   oauthScript?: string;
 }
 
@@ -127,6 +136,10 @@ function normalizeConfig(raw: Record<string, unknown>, baseDirectory: string | n
   if (smokeRoutes) {
     config.smokeRoutes = smokeRoutes;
   }
+  const servers = normalizeServersSection(raw.servers, baseDirectory);
+  if (servers.length > 0) {
+    config.servers = servers;
+  }
   if (typeof raw.oauthScript === 'string') {
     const trimmed = raw.oauthScript.trim();
     if (trimmed.length > 0) {
@@ -224,4 +237,82 @@ function normalizeSmokeRoutesSection(value: unknown): SweetLinkSmokeRoutesConfig
     ...(hasPresets ? { presets: normalizedPresets } : {}),
   };
   return config;
+}
+function normalizeServersSection(
+  value: unknown,
+  baseDirectory: string | null
+): SweetLinkServerConfig[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const servers: SweetLinkServerConfig[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const envRaw = record.env;
+    if (typeof envRaw !== 'string') {
+      continue;
+    }
+    const env = envRaw.trim();
+    if (env.length === 0) {
+      continue;
+    }
+
+    const startCommand = normalizeCommandArray(record.start);
+    const checkCommand = normalizeCommandArray(record.check);
+    const timeoutMs = normalizeTimeout(record.timeoutMs);
+    const cwdRaw = typeof record.cwd === 'string' ? record.cwd.trim() : '';
+    const cwdResolved =
+      cwdRaw.length > 0 ? resolveConfigPath(cwdRaw, baseDirectory) : baseDirectory ?? process.cwd();
+
+    servers.push({
+      env,
+      ...(startCommand ? { start: startCommand } : {}),
+      ...(checkCommand ? { check: checkCommand } : {}),
+      ...(cwdResolved ? { cwd: cwdResolved } : {}),
+      ...(typeof timeoutMs === 'number' ? { timeoutMs } : {}),
+    });
+  }
+  return servers;
+}
+
+function normalizeCommandArray(value: unknown): string[] | null {
+  if (!value) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    const command = value
+      .flatMap((item) => {
+        if (typeof item !== 'string') {
+          return [];
+        }
+        const trimmed = item.trim();
+        return trimmed.length > 0 ? [trimmed] : [];
+      })
+      .filter((segment) => segment.length > 0);
+    return command.length > 0 ? command : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return null;
+    }
+    return ['sh', '-c', trimmed];
+  }
+  return null;
+}
+
+function normalizeTimeout(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
 }

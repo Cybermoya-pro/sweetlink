@@ -98,9 +98,11 @@ Place the config file in your project root (or any parent directory). With the f
 - `cookieMappings` – List of `{ hosts, origins }` entries that teach SweetLink which Chrome profiles to harvest cookies from. Map every hostname your app serves (including wildcards) to the origins you need (auth providers, REST APIs, CDNs). SweetLink merges these with its built-in defaults.
 - `smokeRoutes.defaults` – Ordered array of routes visited by `pnpm sweetlink smoke`. Include additional views or dashboards specific to your app.
 - `smokeRoutes.presets` – Named presets (`{ "admin": ["admin/users", "admin/settings"] }`) that become `pnpm sweetlink smoke --routes admin`.
+- `servers` – Optional list of commands that start/check your local server per environment. Useful when you want SweetLink to boot your app automatically before running automation.
 - `oauthScript` – Absolute or relative path to an OAuth automation script (ESM module). When set, SweetLink loads the module at runtime and calls its `authorize(context)` export to approve third-party consent dialogs.
 
 SweetLink reads the config once at start-up. When you edit `sweetlink.json` rerun the CLI command to pick up the new defaults. Multiple projects on the same machine can keep their own config files; SweetLink stops at the first file it finds while walking up the directory tree, so place project-specific configs as close to the repo root as possible.
+See `apps/sweetlink/docs/config.md` for a full configuration reference (including environment overrides).
 
 ### OAuth automation scripts
 

@@ -5,11 +5,20 @@ import type { CliConfig } from '../types';
 import { loadSweetLinkFileConfig } from './config-file';
 import { readCommandOptions } from './env';
 
+interface ResolvedServerConfig {
+  readonly env: string;
+  readonly start: string[] | null;
+  readonly check: string[] | null;
+  readonly cwd: string | null;
+  readonly timeoutMs: number | null;
+}
+
 export interface RootProgramOptions {
   readonly appUrl: string;
   readonly daemonUrl: string;
   readonly adminKey: string | null;
   readonly oauthScriptPath: string | null;
+  readonly servers: ResolvedServerConfig[];
 }
 
 const normalizeUrlOption = (value: unknown, fallback: string): string => {
@@ -70,11 +79,20 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
     config.oauthScript ??
     (sweetLinkEnv.cliOauthScriptPath ? resolveCliPath(sweetLinkEnv.cliOauthScriptPath) : null);
 
+  const servers: ResolvedServerConfig[] = (config.servers ?? []).map((server) => ({
+    env: server.env,
+    start: server.start ?? null,
+    check: server.check ?? null,
+    cwd: server.cwd ?? null,
+    timeoutMs: typeof server.timeoutMs === 'number' ? server.timeoutMs : null,
+  }));
+
   return {
     appUrl: normalizeUrlOption(optionUrl, fallbackAppUrl),
     daemonUrl: normalizeUrlOption(rawOptions.daemonUrl, fallbackDaemonUrl),
     adminKey: normalizeAdminKey(fallbackAdminKey),
     oauthScriptPath: fallbackOauthScriptPath,
+    servers,
   };
 };
 
@@ -82,11 +100,16 @@ export const readRootProgramOptions = (command: Command): RootProgramOptions => 
 export function resolveConfig(command: Command): CliConfig {
   const parent = command.parent ?? command;
   const options = readRootProgramOptions(parent);
+  const serversByEnv: Record<string, ResolvedServerConfig> = {};
+  for (const server of options.servers) {
+    serversByEnv[server.env] = server;
+  }
   return {
     adminApiKey: options.adminKey,
     appBaseUrl: options.appUrl,
     daemonBaseUrl: options.daemonUrl,
     oauthScriptPath: options.oauthScriptPath,
+    servers: serversByEnv,
   };
 }
 
