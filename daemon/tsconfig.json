@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "paths": {
+      "@sweetistics/sweetlink-shared": ["../sweetlink-shared/src/index.ts"],
+      "@sweetistics/sweetlink-shared/node": ["../sweetlink-shared/src/node.ts"]
+    }
+  },
+  "include": ["./src/**/*"],
+  "exclude": ["./src/**/*.test.ts"]
+}

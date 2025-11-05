@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.build.json",
+  "compilerOptions": {
+    "outDir": "dist/server",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "target": "es2022",
+    "esModuleInterop": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["server.ts", "server/**/*.ts"],
+  "exclude": ["dist", "src", "node_modules"]
+}

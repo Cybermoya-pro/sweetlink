@@ -1,0 +1,24 @@
+{
+  "name": "@sweetistics/sweetlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sweetlink": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc --project tsconfig.build.json",
+    "test": "vitest run --config vitest.config.ts",
+    "lint": "biome lint ./src ./shared/src ./daemon/src ./tests"
+  },
+  "dependencies": {
+    "@sweetistics/sweetlink-shared": "workspace:*",
+    "chrome-cookies-secure": "^3.0.0",
+    "commander": "^14.0.2",
+    "playwright-core": "^1.56.1",
+    "puppeteer": "^24.28.0",
+    "tldjs": "^2.3.2",
+    "undici": "^7.16.0"
+  }
+}

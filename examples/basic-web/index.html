@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SweetLink Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #0d1727;
+        color: #f3f7ff;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        background: rgba(10, 24, 43, 0.85);
+        border-radius: 16px;
+        padding: 2.5rem;
+        box-shadow: 0 18px 45px rgba(3, 12, 24, 0.45);
+      }
+      button {
+        background: linear-gradient(135deg, #7dd3fc, #6366f1);
+        border: 0;
+        border-radius: 999px;
+        color: #05122a;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 0.9rem 1.8rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px rgba(59, 130, 246, 0.35);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+        transform: none;
+        box-shadow: none;
+      }
+      pre {
+        background: rgba(4, 13, 27, 0.9);
+        border-radius: 12px;
+        padding: 1rem;
+        overflow-x: auto;
+      }
+      code {
+        font-family: 'SFMono-Regular', Consolas, Menlo, Monaco, 'Liberation Mono', 'Courier New', monospace;
+        color: #7dd3fc;
+      }
+      #demo-panels {
+        display: grid;
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+      .demo-card {
+        background: rgba(15, 32, 54, 0.9);
+        border-radius: 14px;
+        padding: 1.4rem 1.6rem;
+        box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .demo-card header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      #kpi-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #facc15;
+      }
+      #kpi-value.highlight {
+        animation: pop-kpi 0.6s ease;
+      }
+      @keyframes pop-kpi {
+        0% {
+          transform: scale(1);
+        }
+        25% {
+          transform: scale(1.1);
+          color: #fde68a;
+        }
+        100% {
+          transform: scale(1);
+          color: #facc15;
+        }
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(96, 165, 250, 0.2);
+        color: #bfdbfe;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.75rem;
+        border: 1px solid rgba(96, 165, 250, 0.4);
+      }
+      #feature-card .badge[data-state='stable'] {
+        background: rgba(74, 222, 128, 0.2);
+        color: #bbf7d0;
+        border-color: rgba(74, 222, 128, 0.4);
+      }
+      .flag-grid {
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        padding-top: 0.5rem;
+      }
+      .flag-grid label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+      }
+      .action-btn {
+        align-self: flex-start;
+        margin-top: 0.5rem;
+      }
+      .mock-chart {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+        height: 160px;
+        padding: 1rem;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.05));
+        overflow: hidden;
+      }
+      .mock-chart::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 100% 24px;
+      }
+      .mock-chart .bar {
+        flex: 1;
+        border-radius: 8px 8px 4px 4px;
+        background: linear-gradient(135deg, rgba(244, 114, 182, 0.85), rgba(249, 168, 212, 0.65));
+        box-shadow: 0 8px 18px rgba(236, 72, 153, 0.35);
+      }
+      .mock-chart .bar-a {
+        height: 45%;
+      }
+      .mock-chart .bar-b {
+        height: 70%;
+      }
+      .mock-chart .bar-c {
+        height: 95%;
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.9), rgba(56, 189, 248, 0.7));
+        box-shadow: 0 8px 18px rgba(56, 189, 248, 0.35);
+      }
+      #screenshot-card.pulse {
+        animation: pulse-card 0.8s ease;
+      }
+      @keyframes pulse-card {
+        0% {
+          box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.08), 0 0 0 0 rgba(96, 165, 250, 0.45);
+        }
+        70% {
+          box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.08), 0 0 0 16px rgba(96, 165, 250, 0);
+        }
+        100% {
+          box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.08), 0 0 0 0 rgba(96, 165, 250, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SweetLink Browser Demo</h1>
+      <p>
+        Click the button to request a SweetLink session. The demo calls
+        <code>/api/sweetlink/handshake</code>, registers with the local daemon, and forwards console/command traffic so
+        the CLI can attach. Once connected, try running the example commands below from the SweetLink CLI.
+      </p>
+      <p>
+        Make sure the SweetLink daemon is running (<code>pnpm sweetlink:daemon</code>) and that the mkcert certificate
+        is trusted locally.
+      </p>
+      <button id="enable-btn">Enable SweetLink</button>
+
+      <section id="demo-panels">
+        <article class="demo-card" id="kpi-card">
+          <header>
+            <h2>Realtime KPI</h2>
+            <span id="kpi-value">42%</span>
+          </header>
+          <p>
+            Swap this percentage via
+            <code>pnpm sweetlink run-js demo --code "demo.updateKpi(87)"</code>
+          </p>
+          <button data-demo="pulse" class="action-btn">Pulse Animation</button>
+        </article>
+
+        <article class="demo-card" id="feature-card">
+          <header>
+            <h2>Feature Flags</h2>
+            <span class="badge" id="badge-status" data-state="beta">beta</span>
+          </header>
+          <p>
+            Toggle the badge with
+            <code>pnpm sweetlink run-js demo --code "demo.toggleBadge()"</code>
+          </p>
+          <div class="flag-grid">
+            <label><input type="checkbox" id="flag-ai" checked /> AI summaries</label>
+            <label><input type="checkbox" id="flag-archive" /> Archive sync</label>
+            <label><input type="checkbox" id="flag-search" checked /> Search v2</label>
+          </div>
+        </article>
+
+        <article class="demo-card" id="screenshot-card">
+          <header>
+            <h2>Screenshot Target</h2>
+          </header>
+          <p>
+            Use <code>pnpm sweetlink screenshot demo --selector "#screenshot-card"</code> to capture this card. The CLI
+            scrolls the element into view and waits for ongoing animations.
+          </p>
+          <div class="mock-chart" id="mock-chart">
+            <div class="bar bar-a"></div>
+            <div class="bar bar-b"></div>
+            <div class="bar bar-c"></div>
+          </div>
+        </article>
+      </section>
+
+      <section>
+        <h2>Status</h2>
+        <pre id="status-log">Ready.</pre>
+      </section>
+
+      <section>
+        <h2>Try It</h2>
+        <ol>
+          <li>Start the daemon: <code>pnpm sweetlink:daemon</code></li>
+          <li>Run the demo in another terminal: <code>pnpm --filter @sweetistics/sweetlink-example-basic-web dev</code></li>
+          <li>Open this page and click “Enable SweetLink”</li>
+          <li>Attach the CLI: <code>pnpm sweetlink console demo</code></li>
+          <li>Run the sample commands above (run-js, screenshot, clicks)</li>
+        </ol>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx",
+    "./daemon/src/**/*.ts",
+    "./daemon/src/**/*.tsx",
+    "./examples/**/*.ts",
+    "./examples/**/*.tsx",
+    "./examples/**/*.mts",
+    "./examples/**/*.cts",
+    "./examples/**/*.js",
+    "./examples/**/*.mjs",
+    "./tests/**/*.ts",
+    "./tests/**/*.tsx",
+    "./vitest.config.ts"
+  ],
+  "exclude": ["./dist", "./tmp", "./node_modules"]
+}

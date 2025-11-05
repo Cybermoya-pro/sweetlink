@@ -1,0 +1,25 @@
+{
+  "name": "@sweetistics/sweetlink-daemon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sweetlink-daemon": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "tsx --test \"tests/**/*.test.ts\""
+  },
+  "license": "FSL-1.1-Apache-2.0",
+  "dependencies": {
+    "@sweetistics/sweetlink-shared": "workspace:*",
+    "dotenv": "^17.2.3",
+    "random-word-slugs": "^0.1.7",
+    "ws": "^8.18.3"
+  }
+}

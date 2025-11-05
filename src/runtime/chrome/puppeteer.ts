@@ -1,0 +1,99 @@
+import type { Browser as PuppeteerBrowser, Page as PuppeteerPage } from 'puppeteer';
+import { logDebugError } from '../../util/errors';
+import { delay } from '../../util/time';
+import { urlsRoughlyMatch } from '../url';
+import {
+  PAGE_READY_PRIMARY_TIMEOUT_MS,
+  PAGE_READY_SECONDARY_TIMEOUT_MS,
+  PUPPETEER_NAVIGATION_TIMEOUT_MS,
+  PUPPETEER_PROTOCOL_TIMEOUT_MS,
+} from './constants';
+
+export async function connectPuppeteerBrowser(
+  puppeteer: typeof import('puppeteer').default,
+  browserURL: string,
+  attempts: number
+): Promise<PuppeteerBrowser | null> {
+  let lastError: unknown;
+  const totalAttempts = Math.max(1, attempts);
+  for (let index = 0; index < totalAttempts; index += 1) {
+    try {
+      return await puppeteer.connect({
+        browserURL,
+        defaultViewport: null,
+        protocolTimeout: PUPPETEER_PROTOCOL_TIMEOUT_MS,
+      });
+    } catch (error) {
+      lastError = error;
+      if (index < totalAttempts - 1) {
+        await delay(200 * (index + 1));
+      }
+    }
+  }
+  console.warn('Unable to connect to DevTools endpoint at', browserURL, lastError ?? 'unknown error');
+  return null;
+}
+
+export async function resolvePuppeteerPage(
+  browser: PuppeteerBrowser,
+  targetUrl: string
+): Promise<PuppeteerPage | null> {
+  const attempts = 10;
+  for (let attemptIndex = 0; attemptIndex < attempts; attemptIndex += 1) {
+    const pages = await browser.pages();
+    const match = pages.find((page) => {
+      try {
+        const url = page.url();
+        return url && urlsRoughlyMatch(url, targetUrl);
+      } catch {
+        return false;
+      }
+    });
+    if (match) {
+      return match;
+    }
+    await delay(200);
+  }
+  return null;
+}
+
+export async function navigatePuppeteerPage(
+  page: PuppeteerPage,
+  targetUrl: string,
+  attempts: number = 2
+): Promise<boolean> {
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    try {
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: PUPPETEER_NAVIGATION_TIMEOUT_MS });
+      return true;
+    } catch (error) {
+      logDebugError('Unable to navigate controlled Chrome tab to target', error);
+      if (attempt < attempts - 1) {
+        await delay(300 * (attempt + 1));
+      }
+    }
+  }
+  return false;
+}
+
+export async function waitForPageReady(page: PuppeteerPage): Promise<void> {
+  try {
+    await page.waitForFunction(() => document.readyState === 'complete', { timeout: PAGE_READY_PRIMARY_TIMEOUT_MS });
+  } catch {
+    try {
+      await page.waitForFunction(() => document.readyState === 'interactive', {
+        timeout: PAGE_READY_SECONDARY_TIMEOUT_MS,
+      });
+    } catch {
+      /* swallow */
+    }
+  }
+}
+
+export async function attemptPuppeteerReload(page: PuppeteerPage): Promise<void> {
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: PUPPETEER_NAVIGATION_TIMEOUT_MS });
+  } catch (error) {
+    logDebugError('Reloading the controlled tab failed', error);
+  }
+}

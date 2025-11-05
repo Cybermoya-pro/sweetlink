@@ -1,0 +1,76 @@
+import os from 'node:os';
+import path from 'node:path';
+import { SWEETLINK_DEFAULT_PORT } from './index';
+
+export interface SweetLinkSharedEnv {
+  readonly appUrl: string;
+  readonly prodAppUrl: string;
+  readonly daemonUrl: string;
+  readonly port: number;
+  readonly secret: string | null;
+  readonly secretPath: string;
+  readonly isProduction: boolean;
+  readonly localAdminApiKey: string | null;
+  readonly adminApiKey: string | null;
+  readonly cliCaPath: string | null;
+  readonly cliCaRoot: string;
+  readonly cliChromePath: string | null;
+  readonly cliDevtoolsUrl: string | null;
+  readonly cliChromeProfilePath: string | null;
+  readonly cliCookieDebug: boolean;
+  readonly debug: boolean;
+  readonly cliTestMode: boolean;
+}
+
+function parsePort(raw: string | undefined): number {
+  const candidate = Number(raw);
+  if (Number.isFinite(candidate) && candidate > 0) {
+    return candidate;
+  }
+  return SWEETLINK_DEFAULT_PORT;
+}
+
+export function readSweetLinkEnv(): SweetLinkSharedEnv {
+  // biome-ignore lint/style/noProcessEnv: centralized SweetLink environment configuration
+  const envVariables = process.env;
+  const {
+    SWEETLINK_APP_URL,
+    SWEETLINK_DAEMON_URL,
+    SWEETLINK_PROD_URL,
+    SWEETLINK_PORT,
+    SWEETLINK_SECRET,
+    SWEETISTICS_LOCALHOST_API_KEY,
+    SWEETISTICS_API_KEY,
+    NODE_ENV,
+    SWEETLINK_CA_PATH,
+    SWEETLINK_CAROOT,
+    SWEETLINK_CHROME_PATH,
+    SWEETLINK_CHROME_PROFILE_PATH,
+    SWEETLINK_CHROME_PROFILE,
+    SWEETLINK_DEVTOOLS_URL,
+    SWEETLINK_COOKIE_DEBUG,
+    SWEETLINK_CLI_TEST,
+  } = envVariables;
+
+  return {
+    appUrl: SWEETLINK_APP_URL ?? 'http://localhost:3000',
+    prodAppUrl: SWEETLINK_PROD_URL ?? 'https://sweetistics.com',
+    daemonUrl: SWEETLINK_DAEMON_URL ?? `https://localhost:${SWEETLINK_DEFAULT_PORT}`,
+    port: parsePort(SWEETLINK_PORT),
+    secret: SWEETLINK_SECRET ?? null,
+    secretPath: envVariables.SWEETLINK_SECRET_PATH ?? path.join(os.homedir(), '.sweetlink', 'secret.key'),
+    isProduction: NODE_ENV === 'production',
+    localAdminApiKey: SWEETISTICS_LOCALHOST_API_KEY ?? null,
+    adminApiKey: SWEETISTICS_API_KEY ?? null,
+    cliCaPath: SWEETLINK_CA_PATH ?? null,
+    cliCaRoot: SWEETLINK_CAROOT ?? path.join(os.homedir(), 'Library', 'Application Support', 'mkcert'),
+    cliChromePath: SWEETLINK_CHROME_PATH ?? null,
+    cliDevtoolsUrl: SWEETLINK_DEVTOOLS_URL?.trim() ?? null,
+    cliChromeProfilePath: SWEETLINK_CHROME_PROFILE_PATH ?? SWEETLINK_CHROME_PROFILE ?? null,
+    cliCookieDebug: SWEETLINK_COOKIE_DEBUG === '1',
+    debug: envVariables.SWEETLINK_DEBUG === '1',
+    cliTestMode: SWEETLINK_CLI_TEST === '1',
+  };
+}
+
+export const sweetLinkEnv = readSweetLinkEnv();
