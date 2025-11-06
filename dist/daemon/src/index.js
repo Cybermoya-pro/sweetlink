@@ -18,9 +18,9 @@ import { createServer as createHttpsServer, request as httpsRequest } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { URL } from 'node:url';
-import { createSweetLinkCommandId, SWEETLINK_HEARTBEAT_INTERVAL_MS, SWEETLINK_HEARTBEAT_TOLERANCE_MS, SWEETLINK_WS_PATH, verifySweetLinkToken, } from '@sweetlink/shared';
-import { sweetLinkEnv } from '@sweetlink/shared/env';
-import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret } from '@sweetlink/shared/node';
+import { createSweetLinkCommandId, SWEETLINK_HEARTBEAT_INTERVAL_MS, SWEETLINK_HEARTBEAT_TOLERANCE_MS, SWEETLINK_WS_PATH, verifySweetLinkToken, } from '../../shared/src';
+import { sweetLinkEnv } from '../../shared/src/env';
+import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret } from '../../shared/src/node';
 import WebSocket, { WebSocketServer } from 'ws';
 import { generateSessionCodename } from './codename';
 const SHUTDOWN_GRACE_MS = 1000;

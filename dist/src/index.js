@@ -3,11 +3,12 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSweetLinkCommandId, } from '@sweetlink/shared';
+import { createSweetLinkCommandId, } from '../shared/src';
 import { Command, CommanderError, Option } from 'commander';
 import { compact, uniq } from 'es-toolkit';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
+import { registerTrustCaCommand } from './commands/trust-ca';
 import { readRootProgramOptions, resolveConfig } from './core/config';
 import { loadSweetLinkFileConfig } from './core/config-file';
 import { readCommandOptions } from './core/env';
@@ -199,6 +200,7 @@ program
     console.log('');
 });
 registerRunJsCommand(program);
+registerTrustCaCommand(program);
 registerClickCommand(program);
 program
     .command('console <sessionId>')

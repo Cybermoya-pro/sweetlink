@@ -1,5 +1,0 @@
-packages:
-  - .
-  - shared
-  - daemon
-  - examples/**

@@ -1,12 +1,13 @@
 import { promises as fs } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { issueSweetLinkHandshake } from './server/handshake.js';
+import { issueSweetLinkHandshake, resolveDaemonUrl } from './server/handshake.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const clientDir = path.resolve(__dirname, '../client');
+const clientDirectory = path.resolve(__dirname, '../client');
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -20,17 +21,15 @@ const MIME_TYPES: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
-const server = createServer(async (req, res) => {
-  try {
-    await routeRequest(req, res);
-  } catch (error) {
+const server = createServer((req, res) => {
+  routeRequest(req, res).catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console -- provide feedback for demo operators
     console.error('Unexpected error handling request', message);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ error: message }));
-  }
+  });
 });
 
 const port = resolveExamplePort();
@@ -45,8 +44,13 @@ server.listen(port, () => {
 async function routeRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const method = req.method ?? 'GET';
   const url = req.url ?? '/';
-  if (method === 'POST' && stripQuery(url) === '/api/sweetlink/handshake') {
+  const strippedUrl = stripQuery(url);
+  if (method === 'POST' && strippedUrl === '/api/sweetlink/handshake') {
     await handleHandshake(res);
+    return;
+  }
+  if (method === 'GET' && strippedUrl === '/api/sweetlink/status') {
+    await handleStatus(res);
     return;
   }
 
@@ -74,14 +78,30 @@ async function handleHandshake(res: ServerResponse): Promise<void> {
   }
 }
 
+async function handleStatus(res: ServerResponse): Promise<void> {
+  const daemonUrl = resolveDaemonUrl();
+  const tlsProbe = await probeDaemonTls(daemonUrl);
+
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(
+    JSON.stringify({
+      daemonUrl,
+      reachable: tlsProbe.reachable,
+      tlsTrusted: tlsProbe.tlsTrusted,
+      message: tlsProbe.message ?? null,
+    })
+  );
+}
+
 async function serveStaticAsset(url: string, headOnly: boolean, res: ServerResponse): Promise<void> {
   const sanitizedPath = sanitizePath(stripQuery(url));
   const requestedPath = sanitizedPath === '/' ? 'index.html' : sanitizedPath.slice(1);
-  const candidate = path.join(clientDir, requestedPath);
+  const candidate = path.join(clientDirectory, requestedPath);
   const resolved = await resolveFilePath(candidate);
 
   if (!resolved) {
-    await serveFile(path.join(clientDir, 'index.html'), 'text/html; charset=utf-8', headOnly, res, 200);
+    await serveFile(path.join(clientDirectory, 'index.html'), 'text/html; charset=utf-8', headOnly, res, 200);
     return;
   }
 
@@ -181,4 +201,67 @@ function readEnvString(key: string): string | null {
   }
   const trimmed = raw.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+async function probeDaemonTls(
+  targetUrl: string
+): Promise<{ reachable: boolean; tlsTrusted: boolean; message?: string }> {
+  return await new Promise((resolve) => {
+    let settled = false;
+    const resolveOnce = (value: { reachable: boolean; tlsTrusted: boolean; message?: string }) => {
+      if (!settled) {
+        settled = true;
+        resolve(value);
+      }
+    };
+
+    try {
+      const request = https.request(
+        targetUrl,
+        {
+          method: 'HEAD',
+          rejectUnauthorized: true,
+          timeout: 5000,
+        },
+        (response) => {
+          response.resume();
+          resolveOnce({
+            reachable: true,
+            tlsTrusted: true,
+            message: `status ${response.statusCode ?? 0}`,
+          });
+        }
+      );
+
+      request.on('error', (error: NodeJS.ErrnoException) => {
+        const tlsErrors = new Set([
+          'DEPTH_ZERO_SELF_SIGNED_CERT',
+          'SELF_SIGNED_CERT_IN_CHAIN',
+          'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+          'ERR_TLS_CERT_ALTNAME_INVALID',
+        ]);
+        if (error.code && tlsErrors.has(error.code)) {
+          resolveOnce({ reachable: true, tlsTrusted: false, message: error.message });
+          return;
+        }
+        resolveOnce({
+          reachable: false,
+          tlsTrusted: false,
+          message: error.message,
+        });
+      });
+
+      request.on('timeout', () => {
+        request.destroy(new Error('Request timed out'));
+      });
+
+      request.end();
+    } catch (error) {
+      resolveOnce({
+        reachable: false,
+        tlsTrusted: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
 }

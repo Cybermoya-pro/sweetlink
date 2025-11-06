@@ -10,12 +10,13 @@ import {
   type SweetLinkScreenshotHook,
   type SweetLinkScreenshotRenderer,
   type SweetLinkSelectorCandidate,
-} from '@sweetlink/shared';
+} from '../shared/src';
 import { Command, CommanderError, Option } from 'commander';
 import { compact, uniq } from 'es-toolkit';
 import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
+import { registerTrustCaCommand } from './commands/trust-ca';
 import { readRootProgramOptions, resolveConfig } from './core/config';
 import type { SweetLinkFileConfig } from './core/config-file';
 import { loadSweetLinkFileConfig } from './core/config-file';
@@ -358,6 +359,7 @@ program
   });
 
 registerRunJsCommand(program);
+registerTrustCaCommand(program);
 registerClickCommand(program);
 
 program

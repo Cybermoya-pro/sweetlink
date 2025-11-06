@@ -1,4 +1,4 @@
-import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetlink/shared';
+import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../shared/src';
 import type { CliConfig } from '../types';
 import type { SweetLinkConsoleDump } from './session';
 export interface DevToolsCaptureOptions {

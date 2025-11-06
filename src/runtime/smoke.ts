@@ -63,7 +63,7 @@ type SmokeProgressFile = {
   readonly entries: SmokeProgressEntry[];
 };
 
-const builtinSmokePresets: Record<string, string[]> = {
+const builtinSmokePresets = {
   main: ['timeline/home', 'insights', 'search', '', 'pulse'],
   settings: [
     'settings/account',
@@ -99,12 +99,12 @@ const fallbackDefaults: string[] = [];
 if (mainPresetRoutes.length > 0) {
   fallbackDefaults.push(...mainPresetRoutes);
 } else {
-  fallbackDefaults.push(...(builtinSmokePresets.main ?? []));
+  fallbackDefaults.push(...builtinSmokePresets.main);
 }
 if (settingsPresetRoutes.length > 0) {
   fallbackDefaults.push(...settingsPresetRoutes);
 } else {
-  fallbackDefaults.push(...(builtinSmokePresets.settings ?? []));
+  fallbackDefaults.push(...builtinSmokePresets.settings);
 }
 
 export const DEFAULT_SMOKE_ROUTES = configuredDefaults.length > 0 ? configuredDefaults : fallbackDefaults;
@@ -118,7 +118,7 @@ export const deriveSmokeRoutes = (raw: string | undefined, defaults: readonly st
     return [...defaults];
   }
   const expanded = segments.flatMap((segment) => {
-    const candidatePreset = SMOKE_ROUTE_PRESETS[segment.toLowerCase() as keyof typeof SMOKE_ROUTE_PRESETS];
+    const candidatePreset = SMOKE_ROUTE_PRESETS[segment.toLowerCase()];
     return Array.isArray(candidatePreset) ? candidatePreset : [segment];
   });
   const uniqueRoutes = uniq(expanded);

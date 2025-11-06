@@ -1,9 +1,8 @@
 {
   "name": "@sweetlink/daemon",
   "version": "0.1.0",
-  "description": "Daemon process for SweetLink controlled Chrome sessions.",
-  "license": "MIT",
-  "private": false,
+  "private": true,
+  "description": "Daemon process for SweetLink controlled Chrome sessions (internal workspace build input).",
   "type": "module",
   "bin": {
     "sweetlink-daemon": "./dist/index.js"
@@ -25,31 +24,23 @@
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "prepublishOnly": "pnpm run build"
   },
+  "license": "MIT",
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/steipete/sweetlink.git",
-    "directory": "daemon"
+    "url": "https://github.com/steipete/sweetistics.git",
+    "directory": "apps/sweetlink/daemon"
   },
   "bugs": {
-    "url": "https://github.com/steipete/sweetlink/issues"
+    "url": "https://github.com/steipete/sweetistics/issues"
   },
   "dependencies": {
-    "@sweetlink/shared": "workspace:*",
     "dotenv": "^17.2.3",
     "random-word-slugs": "^0.1.7",
     "ws": "^8.18.3"
-  },
-  "devDependencies": {
-    "@types/ws": "^8.5.10",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
   }
 }

@@ -1,4 +1,4 @@
-import type { SweetLinkScreenshotHook } from '@sweetlink/shared';
+import type { SweetLinkScreenshotHook } from '../shared/src';
 import { describe, expect, it } from 'vitest';
 import { buildScreenshotHooks } from '../src/screenshot-hooks';
 

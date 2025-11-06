@@ -44,6 +44,77 @@
         transform: none;
         box-shadow: none;
       }
+      #tls-status {
+        margin-top: 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        border: 1px solid rgba(96, 165, 250, 0.25);
+        background: rgba(15, 32, 54, 0.75);
+        display: none;
+        gap: 0.75rem;
+      }
+      #tls-status[data-state='checking'],
+      #tls-status[data-state='untrusted'],
+      #tls-status[data-state='unreachable'] {
+        display: flex;
+        flex-direction: column;
+      }
+      #tls-status-message {
+        margin: 0;
+      }
+      .tls-action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      #tls-status button {
+        background: rgba(59, 130, 246, 0.25);
+        color: #bfdbfe;
+        border: 1px solid rgba(59, 130, 246, 0.45);
+        padding: 0.65rem 1.25rem;
+      }
+      #tls-status button:hover {
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+      }
+      .session-chip {
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 1rem;
+        border-radius: 12px;
+        background: rgba(37, 99, 235, 0.16);
+        border: 1px solid rgba(37, 99, 235, 0.45);
+        font-weight: 500;
+        transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+      }
+      .session-chip[data-state='inactive'] {
+        display: none;
+      }
+      .session-chip[data-state='pending'] {
+        background: rgba(250, 204, 21, 0.08);
+        border-color: rgba(250, 204, 21, 0.32);
+      }
+      .session-chip[data-state='active'] {
+        background: rgba(74, 222, 128, 0.1);
+        border-color: rgba(74, 222, 128, 0.36);
+      }
+      .session-chip strong {
+        font-weight: 600;
+        color: #f8fafc;
+      }
+      .indicator-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.7);
+      }
+      .session-chip[data-state='pending'] .indicator-dot {
+        background: #facc15;
+      }
+      .session-chip[data-state='active'] .indicator-dot {
+        background: #34d399;
+      }
       pre {
         background: rgba(4, 13, 27, 0.9);
         border-radius: 12px;
@@ -192,6 +263,18 @@
         is trusted locally.
       </p>
       <button id="enable-btn">Enable SweetLink</button>
+      <div id="tls-status" data-state="checking" aria-live="polite">
+        <p id="tls-status-message">Checking daemon TLS status…</p>
+        <div class="tls-action-row">
+          <button id="tls-open" type="button">Open Daemon Certificate</button>
+          <button id="tls-retry" type="button">Retry Check</button>
+        </div>
+      </div>
+      <div id="session-chip" class="session-chip" data-state="inactive" aria-live="polite" aria-hidden="true">
+        <span class="indicator-dot" aria-hidden="true"></span>
+        <span id="session-prefix">CLI Session</span>
+        <strong id="session-name">—</strong>
+      </div>
 
       <section id="demo-panels">
         <article class="demo-card" id="kpi-card">

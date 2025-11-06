@@ -21,9 +21,9 @@ import {
   type SweetLinkSessionMetadata,
   type SweetLinkSessionSummary,
   verifySweetLinkToken,
-} from '@sweetlink/shared';
-import { sweetLinkEnv } from '@sweetlink/shared/env';
-import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret } from '@sweetlink/shared/node';
+} from '../../shared/src';
+import { sweetLinkEnv } from '../../shared/src/env';
+import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret } from '../../shared/src/node';
 import WebSocket, { WebSocketServer } from 'ws';
 import { generateSessionCodename } from './codename';
 

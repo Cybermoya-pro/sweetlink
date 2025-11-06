@@ -1,5 +1,5 @@
-import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '@sweetlink/shared';
-import { resolveSweetLinkSecret, type SweetLinkSecretResolution } from '@sweetlink/shared/node';
+import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '../shared/src';
+import { resolveSweetLinkSecret, type SweetLinkSecretResolution } from '../shared/src/node';
 import { fetchJson } from './http';
 import type { CachedCliTokenSource, CliConfig } from './types';
 import { describeAppForPrompt } from './util/app-label';

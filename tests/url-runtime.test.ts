@@ -5,7 +5,7 @@ describe('runtime/url utilities', () => {
   it('normalizes URLs and tolerates invalid input', () => {
     expect(normalizeUrlForMatch('https://app.example.dev/path')?.hostname).toBe('app.example.dev');
     expect(normalizeUrlForMatch('not-a-url')).toBeNull();
-    expect(normalizeUrlForMatch(undefined)).toBeNull();
+    expect(normalizeUrlForMatch()).toBeNull();
   });
 
   it('trims trailing slashes but preserves root path', () => {

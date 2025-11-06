@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const connectMock = vi.fn();
 const resolveMock = vi.fn();
 
-vi.mock('../../../src/runtime/chrome/puppeteer', () => ({
+vi.mock('@sweetlink-app/runtime/chrome/puppeteer', () => ({
   connectPuppeteerBrowser: connectMock,
   resolvePuppeteerPage: resolveMock,
 }));
@@ -12,7 +12,7 @@ vi.mock('puppeteer', () => ({
   default: {},
 }));
 
-const focusModule = await import('../../../src/runtime/chrome/focus');
+const focusModule = await import('@sweetlink-app/runtime/chrome/focus');
 const { focusControlledChromePage } = focusModule;
 
 describe('focusControlledChromePage', () => {
@@ -26,8 +26,8 @@ describe('focusControlledChromePage', () => {
   });
 
   it('focuses the resolved controlled Chrome page and disconnects the browser', async () => {
-    const bringToFront = vi.fn().mockResolvedValue(undefined);
-    const disconnect = vi.fn().mockResolvedValue(undefined);
+    const bringToFront = vi.fn().mockResolvedValue();
+    const disconnect = vi.fn().mockResolvedValue();
     const browser = {
       pages: vi.fn().mockResolvedValue([]),
       disconnect,
@@ -48,8 +48,8 @@ describe('focusControlledChromePage', () => {
   });
 
   it('falls back to the first available page when the target cannot be resolved', async () => {
-    const bringToFront = vi.fn().mockResolvedValue(undefined);
-    const disconnect = vi.fn().mockResolvedValue(undefined);
+    const bringToFront = vi.fn().mockResolvedValue();
+    const disconnect = vi.fn().mockResolvedValue();
     const page = { bringToFront };
     const browser = {
       pages: vi.fn().mockResolvedValue([page]),
@@ -68,7 +68,7 @@ describe('focusControlledChromePage', () => {
   });
 
   it('returns false when no pages can be focused', async () => {
-    const disconnect = vi.fn().mockResolvedValue(undefined);
+    const disconnect = vi.fn().mockResolvedValue();
     const browser = {
       pages: vi.fn().mockResolvedValue([]),
       disconnect,

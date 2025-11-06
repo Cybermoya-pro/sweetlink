@@ -70,13 +70,13 @@ if (mainPresetRoutes.length > 0) {
     fallbackDefaults.push(...mainPresetRoutes);
 }
 else {
-    fallbackDefaults.push(...(builtinSmokePresets.main ?? []));
+    fallbackDefaults.push(...builtinSmokePresets.main);
 }
 if (settingsPresetRoutes.length > 0) {
     fallbackDefaults.push(...settingsPresetRoutes);
 }
 else {
-    fallbackDefaults.push(...(builtinSmokePresets.settings ?? []));
+    fallbackDefaults.push(...builtinSmokePresets.settings);
 }
 export const DEFAULT_SMOKE_ROUTES = configuredDefaults.length > 0 ? configuredDefaults : fallbackDefaults;
 export const deriveSmokeRoutes = (raw, defaults) => {

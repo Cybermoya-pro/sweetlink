@@ -1,29 +1,19 @@
 # SweetLink Sync Notes
 
-These steps keep the standalone repository aligned with the Sweetistics monorepo. Always make code/docs changes in `apps/sweetlink/**` first, then sync them back here so the monorepo remains the source of truth.
+This standalone repository is mirrored from the Sweetistics monorepo (`/Users/steipete/Projects/sweetistics/apps/sweetlink`). When you make changes in the monorepo and want them here, follow this exact flow so both copies stay aligned.
 
-1. From `/Users/steipete/Projects/sweetistics`, mirror the package:
+1. From the monorepo root, run:
    ```bash
    rsync -a --delete apps/sweetlink/ ~/Projects/sweetlink/
    ```
-   (Use `--exclude README.md` if you want to preserve the standalone documentation.)
-2. Regenerate distributable artifacts if they are stale:
+   Only run the command in this direction. The `--delete` flag ensures removed files disappear from the standalone repo too.
+2. Recreate the git metadata if `rsync` wiped it:
    ```bash
-   pnpm --filter @sweetistics/sweetlink run build
+   git clone https://github.com/steipete/sweetlink.git ~/Projects/sweetlink-temp
+   mv ~/Projects/sweetlink-temp/.git ~/Projects/sweetlink/
+   rm -rf ~/Projects/sweetlink-temp
    ```
-3. Update the standalone `.gitignore` or aux files if new temp directories appear.
-4. Keep `sweetlink.json` in sync with the monorepo copy so cookie mappings stay aligned.
-5. Commit from `~/Projects/sweetlink` and push to `https://github.com/steipete/sweetlink.git`.
+3. Restore standalone-only files (like this guide) as needed, then review the diff before committing.
+4. Commit and push **using plain git commands** (e.g. `git commit`, `git push`). The Sweetistics `committer` script is only for the monorepo; external repos must use git directly.
 
-## Rebuilding sqlite3 for SweetLink cookie sync
-
-If `pnpm sweetlink open --controlled …` starts warning `Could not locate the bindings file … sqlite3/node_sqlite3.node`, the bundled prebuild doesn’t match your Node version (Node 25 at the moment). Fix it by rebuilding sqlite3 from source via `node-gyp`:
-
-```bash
-cd /Users/steipete/Projects/sweetistics/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3
-npx node-gyp rebuild --verbose
-```
-
-That produces `build/Release/node_sqlite3.node`, allowing chrome-cookies-secure to copy cookies again on subsequent runs. Re-run the rebuild whenever you bump Node or reinstall dependencies.
-
-Keep these notes out of the published README so end users only see product documentation.
+Need to pull changes back into the monorepo? Edit under `apps/sweetlink/**`, test there, then repeat the sync path above.

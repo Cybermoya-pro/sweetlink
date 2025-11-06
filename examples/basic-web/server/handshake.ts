@@ -17,7 +17,7 @@ const SWEETLINK_WS_PATH = '/bridge';
 const DEFAULT_SECRET_PATH = path.join(os.homedir(), '.sweetlink', 'secret.key');
 const DEFAULT_DAEMON_PORT = 4455;
 
-function resolveDaemonUrl(): string {
+export function resolveDaemonUrl(): string {
   const daemonUrl = readEnvString('SWEETLINK_DAEMON_URL');
   if (daemonUrl) {
     return daemonUrl;
@@ -86,8 +86,8 @@ async function resolveSweetLinkSecret(): Promise<{ secret: string; source: strin
   }
 
   const generated = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
-  const dir = path.dirname(secretPath);
-  await mkdir(dir, { recursive: true });
+  const secretDirectory = path.dirname(secretPath);
+  await mkdir(secretDirectory, { recursive: true });
   await writeFile(secretPath, `${generated}\n`, { mode: fsConstants.S_IRUSR | fsConstants.S_IWUSR });
   return { secret: generated, source: 'generated', path: secretPath };
 }

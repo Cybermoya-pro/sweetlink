@@ -1,9 +1,8 @@
 {
   "name": "@sweetlink/shared",
   "version": "0.1.0",
-  "description": "Shared SweetLink utilities and types consumed by the CLI and daemon.",
-  "license": "MIT",
-  "private": false,
+  "private": true,
+  "description": "Shared SweetLink utilities and types consumed by the CLI and daemon (internal only).",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -34,18 +33,13 @@
     "README.md",
     "LICENSE"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/steipete/sweetlink.git",
-    "directory": "shared"
+    "url": "https://github.com/steipete/sweetistics.git",
+    "directory": "apps/sweetlink/shared"
   },
   "bugs": {
-    "url": "https://github.com/steipete/sweetlink/issues"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.3"
+    "url": "https://github.com/steipete/sweetistics/issues"
   }
 }

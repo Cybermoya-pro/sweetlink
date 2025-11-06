@@ -29,28 +29,28 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }));
 
-const saveDevToolsConfigMock = vi.fn().mockResolvedValue(undefined);
-vi.mock('../../../src/runtime/devtools', () => ({
+const saveDevToolsConfigMock = vi.fn().mockResolvedValue();
+vi.mock('@sweetlink-app/runtime/devtools', () => ({
   saveDevToolsConfig: saveDevToolsConfigMock,
 }));
 
-const primeControlledChromeCookiesMock = vi.fn().mockResolvedValue(undefined);
-vi.mock('../../../src/runtime/chrome/cookies', () => ({
+const primeControlledChromeCookiesMock = vi.fn().mockResolvedValue();
+vi.mock('@sweetlink-app/runtime/chrome/cookies', () => ({
   primeControlledChromeCookies: primeControlledChromeCookiesMock,
 }));
 
 const findAvailablePortMock = vi.fn().mockResolvedValue(9333);
-vi.mock('../../../src/runtime/chrome/reuse', () => ({
+vi.mock('@sweetlink-app/runtime/chrome/reuse', () => ({
   findAvailablePort: findAvailablePortMock,
 }));
 
-vi.mock('../../../src/env', () => ({
+vi.mock('@sweetlink-app/env', () => ({
   cliEnv: {
     chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   },
 }));
 
-const launchModule = await import('../../../src/runtime/chrome/launch');
+const launchModule = await import('@sweetlink-app/runtime/chrome/launch');
 const { launchChrome, launchControlledChrome, prepareChromeLaunch } = launchModule;
 
 describe('Chrome launch helpers', () => {

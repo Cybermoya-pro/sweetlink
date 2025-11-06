@@ -1,19 +1,5 @@
-# SweetLink Shared
+# SweetLink Shared (Internal)
 
-This package exposes the platform-independent building blocks that power the SweetLink CLI and daemon. It includes shared types, configuration helpers, and environment utilities so downstream tooling can keep behaviour aligned with the canonical implementation.
+This workspace contains the shared types and helpers that the CLI and daemon build against. It is bundled into the published `sweetlink` package and is not meant to be consumed directly from npm.
 
-## Installation
-
-```bash
-pnpm add @sweetlink/shared
-```
-
-## Contents
-
-- `@sweetlink/shared` – core helpers and type definitions
-- `@sweetlink/shared/env` – environment variable parsing helpers
-- `@sweetlink/shared/node` – Node-specific utilities (filesystem, logging, etc.)
-
-## License
-
-MIT © Peter Steinberger
+When hacking on SweetLink locally you can import directly from `../shared/src/*`. The build step copies the compiled output to `dist/shared`, and the CLI runtime resolves those relative paths at install time.

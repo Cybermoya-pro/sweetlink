@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '@sweetlink/shared';
+import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../shared/src';
 import { runCodexImagePrompt, runCodexTextPrompt } from '../codex';
 import { fetchJson } from '../http';
 import type { CliConfig } from '../types';

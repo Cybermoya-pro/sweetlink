@@ -1,6 +1,7 @@
-import type { ServerResponse } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import https from 'node:https';
 import { defineConfig, type PluginOption } from 'vite';
-import { issueSweetLinkHandshake } from './server/handshake.js';
+import { issueSweetLinkHandshake, resolveDaemonUrl } from './server/handshake.js';
 
 async function handleHandshakeRequest(_req: unknown, res: ServerResponse) {
   try {
@@ -15,25 +16,106 @@ async function handleHandshakeRequest(_req: unknown, res: ServerResponse) {
   }
 }
 
+async function handleStatusRequest(_req: IncomingMessage, res: ServerResponse) {
+  const daemonUrl = resolveDaemonUrl();
+  const tlsProbe = await probeDaemonTls(daemonUrl);
+  res.setHeader('Content-Type', 'application/json');
+  res.end(
+    JSON.stringify({
+      daemonUrl,
+      reachable: tlsProbe.reachable,
+      tlsTrusted: tlsProbe.tlsTrusted,
+      message: tlsProbe.message ?? null,
+    })
+  );
+}
+
+async function probeDaemonTls(targetUrl: string): Promise<{ reachable: boolean; tlsTrusted: boolean; message?: string }> {
+  return await new Promise((resolve) => {
+    let settled = false;
+    const resolveOnce = (value: { reachable: boolean; tlsTrusted: boolean; message?: string }) => {
+      if (!settled) {
+        settled = true;
+        resolve(value);
+      }
+    };
+
+    try {
+      const request = https.request(
+        targetUrl,
+        {
+          method: 'HEAD',
+          rejectUnauthorized: true,
+          timeout: 5000,
+        },
+        (response) => {
+          response.resume();
+          resolveOnce({ reachable: true, tlsTrusted: true, message: `status ${response.statusCode ?? 0}` });
+        }
+      );
+
+      request.on('error', (error: NodeJS.ErrnoException) => {
+        const tlsErrors = new Set([
+          'DEPTH_ZERO_SELF_SIGNED_CERT',
+          'SELF_SIGNED_CERT_IN_CHAIN',
+          'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+          'ERR_TLS_CERT_ALTNAME_INVALID',
+        ]);
+        if (error.code && tlsErrors.has(error.code)) {
+          resolveOnce({ reachable: true, tlsTrusted: false, message: error.message });
+          return;
+        }
+        resolveOnce({ reachable: false, tlsTrusted: false, message: error.message });
+      });
+
+      request.on('timeout', () => {
+        request.destroy(new Error('Request timed out'));
+      });
+
+      request.end();
+    } catch (error) {
+      resolveOnce({
+        reachable: false,
+        tlsTrusted: false,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+}
+
 function sweetLinkHandshakePlugin(): PluginOption {
   return {
     name: 'sweetlink-handshake',
     configureServer(server) {
       server.middlewares.use('/api/sweetlink/handshake', (req, res, next) => {
         if (req.method !== 'POST') {
-          return next();
+          next();
+          return;
         }
         void handleHandshakeRequest(req, res);
-        return undefined;
+      });
+      server.middlewares.use('/api/sweetlink/status', (req, res, next) => {
+        if (req.method !== 'GET') {
+          next();
+          return;
+        }
+        void handleStatusRequest(req, res);
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use('/api/sweetlink/handshake', (req, res, next) => {
         if (req.method !== 'POST') {
-          return next();
+          next();
+          return;
         }
         void handleHandshakeRequest(req, res);
-        return undefined;
+      });
+      server.middlewares.use('/api/sweetlink/status', (req, res, next) => {
+        if (req.method !== 'GET') {
+          next();
+          return;
+        }
+        void handleStatusRequest(req, res);
       });
     },
   };
