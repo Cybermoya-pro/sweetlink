@@ -37,6 +37,7 @@ let socket: WebSocket | null = null;
 let sessionId: string | null = null;
 let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
 const pendingConsoleEvents: SweetLinkConsoleEvent[] = [];
+const copyResetTimers = new WeakMap<HTMLButtonElement, number>();
 
 type TlsState = 'checking' | 'trusted' | 'untrusted' | 'unreachable';
 
@@ -191,6 +192,123 @@ function appendStatus(line: string) {
   if (!statusLog) return;
   const now = new Date().toISOString();
   statusLog.textContent = `${statusLog.textContent ?? ''}\n[${now}] ${line}`.trim();
+}
+
+function resolveCopySourceText(button: HTMLButtonElement): string | null {
+  const sourceId = button.dataset.copySource;
+  if (!sourceId) {
+    return null;
+  }
+  const sourceElement = document.getElementById(sourceId);
+  if (!sourceElement) {
+    return null;
+  }
+  if (sourceElement instanceof HTMLInputElement || sourceElement instanceof HTMLTextAreaElement) {
+    const value = sourceElement.value;
+    return value.length > 0 ? value : null;
+  }
+  const text = sourceElement.textContent ?? '';
+  const cleaned = text.replace(/\s+$/u, '');
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (!text) {
+    return false;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    if (fallbackCopy(text)) {
+      return true;
+    }
+    if (error instanceof Error) {
+      appendStatus(`Clipboard copy failed: ${error.message}`);
+    }
+    return false;
+  }
+}
+
+function fallbackCopy(text: string): boolean {
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    document.body.append(textArea);
+    textArea.focus();
+    textArea.select();
+    const success = document.execCommand('copy');
+    textArea.remove();
+    return success;
+  } catch {
+    return false;
+  }
+}
+
+function resetCopyButton(button: HTMLButtonElement): void {
+  const timer = copyResetTimers.get(button);
+  if (timer) {
+    window.clearTimeout(timer);
+    copyResetTimers.delete(button);
+  }
+  const defaultLabel = button.dataset.copyDefault ?? 'Copy to clipboard';
+  const defaultHtml = button.dataset.copyDefaultHtml;
+  const defaultIcon = button.dataset.copyIcon ?? '📋';
+  button.classList.remove('copied');
+  if (defaultHtml) {
+    button.innerHTML = defaultHtml;
+  } else {
+    button.innerHTML = `<span aria-hidden="true">${defaultIcon}</span>`;
+  }
+  button.setAttribute('aria-label', defaultLabel);
+}
+
+function markButtonCopied(button: HTMLButtonElement): void {
+  resetCopyButton(button);
+  const successLabel = button.dataset.copySuccess ?? 'Copied!';
+  const successIcon = button.dataset.copySuccessIcon ?? '✓';
+  button.classList.add('copied');
+  button.innerHTML = `<span aria-hidden="true">${successIcon}</span>`;
+  button.setAttribute('aria-label', successLabel);
+  const timeout = window.setTimeout(() => {
+    resetCopyButton(button);
+  }, 2000);
+  copyResetTimers.set(button, timeout);
+}
+
+function setupCopyButtons(): void {
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-copy-source]');
+  for (const button of buttons) {
+    const defaultLabel = button.dataset.copyLabel ?? button.getAttribute('aria-label') ?? 'Copy to clipboard';
+    button.dataset.copyDefault = defaultLabel;
+    button.dataset.copyDefaultHtml = button.innerHTML;
+    if (!button.dataset.copyIcon && button.innerHTML.trim().length === 0) {
+      button.dataset.copyIcon = '📋';
+      button.innerHTML = '<span aria-hidden="true">📋</span>';
+    }
+    if (!button.hasAttribute('aria-label')) {
+      button.setAttribute('aria-label', defaultLabel);
+    }
+    button.addEventListener('click', async () => {
+      const sourceText = resolveCopySourceText(button);
+      if (!sourceText) {
+        appendStatus(`Copy failed: no text found for ${button.dataset.copyLabel ?? 'selection'}.`);
+        resetCopyButton(button);
+        return;
+      }
+      const copied = await copyTextToClipboard(sourceText);
+      if (copied) {
+        markButtonCopied(button);
+        appendStatus(`Copied ${button.dataset.copyLabel ?? 'text'} to clipboard.`);
+      } else {
+        appendStatus(`Copy failed for ${button.dataset.copyLabel ?? 'text'}.`);
+        resetCopyButton(button);
+      }
+    });
+  }
 }
 
 function setSessionIndicator(state: 'inactive' | 'pending' | 'active', label?: string, prefix?: string) {
@@ -506,6 +624,7 @@ async function enableSweetLink() {
 }
 
 installConsoleForwarder();
+setupCopyButtons();
 for (const button of actionButtons) {
   button.addEventListener('click', () => {
     demoApi.pulseCard();
