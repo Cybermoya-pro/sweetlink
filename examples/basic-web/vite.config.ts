@@ -30,7 +30,9 @@ async function handleStatusRequest(_req: IncomingMessage, res: ServerResponse) {
   );
 }
 
-async function probeDaemonTls(targetUrl: string): Promise<{ reachable: boolean; tlsTrusted: boolean; message?: string }> {
+async function probeDaemonTls(
+  targetUrl: string
+): Promise<{ reachable: boolean; tlsTrusted: boolean; message?: string }> {
   return await new Promise((resolve) => {
     let settled = false;
     const resolveOnce = (value: { reachable: boolean; tlsTrusted: boolean; message?: string }) => {

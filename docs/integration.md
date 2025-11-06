@@ -7,7 +7,7 @@ read_when:
 
 # Integrating SweetLink Into Your Web App
 
-SweetLink ships with a standalone CLI/daemon pair, but you still need a few browser hooks and an API route to complete the loop inside your app. Sweetistics uses the pattern below; feel free to adapt it to your stack.
+SweetLink ships with a standalone CLI/daemon pair, but you still need a few browser hooks and an API route to complete the loop inside your app. The Sweetistics frontend uses the pattern below; feel free to adapt it to your stack.
 
 ## 1. Bootstrap SweetLink on the client
 
@@ -169,51 +169,49 @@ async function maybeCopyToClipboard(session: SweetLinkSessionBootstrap): Promise
 }
 ```
 
-Example wiring (TypeScript + React):
-
-```tsx
-'use client';
-
-import { useSweetLinkAutoBootstrap } from '@/hooks/useSweetLinkAutoBootstrap';
-
-export function SweetLinkAutoBootstrap(): null {
-  useSweetLinkAutoBootstrap();
-  return null;
-}
-```
-
-Mount this component in your root providers so it runs on every page:
-
-```tsx
-export function BaseProviders({ children }: { children: React.ReactNode }) {
-  return (
-    <AppProviders>
-      <SweetLinkAutoBootstrap />
-      {children}
-    </AppProviders>
-  );
-}
-```
-
 ## 2. Implement the handshake endpoint
 
 The CLI expects an HTTP endpoint that returns a websocket token and URL for the daemon. The snippet below mirrors the handler used inside the Sweetistics web app (Next.js route). Adjust import paths to match your project structure:
 
-1. Call `resolveSweetLinkSecret({ autoCreate: ... })` from `../shared/src/node` to read the daemon secret (stored at `~/.sweetlink/secret.key` by default).
-2. Create a new session ID with `createSweetLinkSessionId()` and sign it via `signSweetLinkToken({ scope: 'session' })`.
-3. Return JSON like:
+```ts
+import {
+  createSweetLinkSessionId,
+  SWEETLINK_SESSION_EXP_SECONDS,
+  SWEETLINK_WS_PATH,
+  signSweetLinkToken,
+} from '@sweetlink/shared';
+import { sweetLinkEnv } from '@sweetlink/shared/env';
+import { resolveSweetLinkSecret } from '@sweetlink/shared/node';
+import { NextResponse } from 'next/server';
 
-```json
-{
-  "sessionId": "uuid",
-  "sessionToken": "signed-token",
-  "socketUrl": "wss://localhost:4455/bridge",
-  "expiresAt": 1730858400,
-  "codename": "paper-dolphin"
+export async function POST() {
+  const secretResolution = await resolveSweetLinkSecret({ autoCreate: !sweetLinkEnv.isProduction });
+  const sessionId = createSweetLinkSessionId();
+  const ttlSeconds = SWEETLINK_SESSION_EXP_SECONDS;
+
+  const token = signSweetLinkToken({
+    secret: secretResolution.secret,
+    scope: 'session',
+    subject: 'sweetlink-web',
+    ttlSeconds,
+    sessionId,
+  });
+
+  const port = sweetLinkEnv.port;
+  const socketUrl = `wss://localhost:${String(port)}${SWEETLINK_WS_PATH}`;
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+  return NextResponse.json({
+    sessionId,
+    sessionToken: token,
+    socketUrl,
+    expiresAt,
+    codename: null,
+  });
 }
 ```
 
-4. Protect the route in production (e.g., wrap with your admin auth middleware). In dev you can allow anonymous access so automation works before cookies sync.
+Protect the route in production (e.g., wrap it with your admin auth middleware) and log the request for auditability when helpful.
 
 ## 3. Surface session status in the UI
 

@@ -1,5 +1,5 @@
-import type { SweetLinkScreenshotHook } from '../shared/src';
 import { describe, expect, it } from 'vitest';
+import type { SweetLinkScreenshotHook } from '../shared/src';
 import { buildScreenshotHooks } from '../src/screenshot-hooks';
 
 const defaultElementHooks: SweetLinkScreenshotHook[] = [

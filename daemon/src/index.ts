@@ -10,21 +10,21 @@ import path from 'node:path';
 import { URL } from 'node:url';
 import {
   createSweetLinkCommandId,
+  SWEETLINK_DEFAULT_PORT,
   SWEETLINK_HEARTBEAT_INTERVAL_MS,
   SWEETLINK_HEARTBEAT_TOLERANCE_MS,
   SWEETLINK_WS_PATH,
-  type SweetLinkClientMessage,
-  type SweetLinkCommand,
-  type SweetLinkCommandResult,
-  type SweetLinkConsoleEvent,
-  type SweetLinkServerMessage,
-  type SweetLinkSessionMetadata,
   type SweetLinkSessionSummary,
   verifySweetLinkToken,
-} from '../../shared/src';
-import { sweetLinkEnv } from '../../shared/src/env';
-import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret } from '../../shared/src/node';
+} from '@sweetlink/shared';
+import { readSweetLinkEnv } from '@sweetlink/shared/env';
+import {
+  getDefaultSweetLinkSecretPath,
+  resolveSweetLinkSecret,
+  type SweetLinkSecretResolution,
+} from '@sweetlink/shared/node';
 import WebSocket, { WebSocketServer } from 'ws';
+import { z } from 'zod';
 import { generateSessionCodename } from './codename';
 
 const SHUTDOWN_GRACE_MS = 1000;
@@ -41,18 +41,39 @@ const unrefTimer = (handle: TimerHandle): void => {
   }
 };
 
+const toError = (value: unknown): Error => {
+  if (value instanceof Error) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return Object.assign(new Error(value), { cause: value });
+  }
+  if (value && typeof value === 'object' && 'message' in (value as { message?: unknown })) {
+    const candidate = (value as { message?: unknown }).message;
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return Object.assign(new Error(candidate.trim()), { cause: value });
+    }
+  }
+  return Object.assign(new Error('Unknown error'), { cause: value });
+};
+
+const getErrorMessage = (value: unknown): string => {
+  const error = toError(value);
+  return error.message || 'Unknown error';
+};
+
 interface PendingCommand {
   readonly commandId: string;
-  readonly resolve: (result: SweetLinkCommandResult) => void;
+  readonly resolve: (result: CommandResult) => void;
   readonly reject: (error: Error) => void;
   readonly timeout: TimerHandle;
 }
 
 interface SessionEntry {
-  readonly metadata: SweetLinkSessionMetadata;
+  readonly metadata: SessionMetadata;
   readonly socket: WebSocket;
   lastHeartbeat: number;
-  readonly consoleBuffer: SweetLinkConsoleEvent[];
+  readonly consoleBuffer: ConsoleEvent[];
   readonly pending: Map<string, PendingCommand>;
   lastConsoleEventAt: number | null;
 }
@@ -67,23 +88,219 @@ const SOCKET_STATE_LABEL: Record<number, 'connecting' | 'open' | 'closing' | 'cl
   3: 'closed',
 };
 
+const SweetLinkConsoleLevelSchema = z.enum(['log', 'info', 'warn', 'error', 'debug']);
+
+const consoleEventSchema = z
+  .object({
+    id: z.string(),
+    timestamp: z.number(),
+    level: SweetLinkConsoleLevelSchema,
+    args: z.array(z.unknown()),
+  })
+  .passthrough();
+
+const commandResultSchema = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      commandId: z.string(),
+      durationMs: z.number(),
+      data: z.unknown().optional(),
+      console: z.array(consoleEventSchema).optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      ok: z.literal(false),
+      commandId: z.string(),
+      durationMs: z.number(),
+      error: z.string(),
+      stack: z.string().optional(),
+      console: z.array(consoleEventSchema).optional(),
+    })
+    .passthrough(),
+]);
+
+const registerMessageSchema = z
+  .object({
+    kind: z.literal('register'),
+    token: z.string(),
+    sessionId: z.string(),
+    url: z.string(),
+    title: z.string(),
+    userAgent: z.string(),
+    topOrigin: z.string(),
+  })
+  .passthrough();
+
+const heartbeatMessageSchema = z
+  .object({
+    kind: z.literal('heartbeat'),
+    sessionId: z.string(),
+  })
+  .passthrough();
+
+const commandResultMessageSchema = z
+  .object({
+    kind: z.literal('commandResult'),
+    sessionId: z.string(),
+    result: commandResultSchema,
+  })
+  .passthrough();
+
+const consoleMessageSchema = z
+  .object({
+    kind: z.literal('console'),
+    sessionId: z.string(),
+    events: z.array(consoleEventSchema),
+  })
+  .passthrough();
+
+const clientMessageSchema = z.discriminatedUnion('kind', [
+  registerMessageSchema,
+  heartbeatMessageSchema,
+  commandResultMessageSchema,
+  consoleMessageSchema,
+]);
+
+const runScriptCommandSchema = z
+  .object({
+    type: z.literal('runScript'),
+    code: z.string(),
+    timeoutMs: z.number().finite().positive().optional(),
+    captureConsole: z.boolean().optional(),
+  })
+  .passthrough();
+
+const getDomCommandSchema = z
+  .object({
+    type: z.literal('getDom'),
+    selector: z.string().optional(),
+    includeShadowDom: z.boolean().optional(),
+  })
+  .passthrough();
+
+const navigateCommandSchema = z
+  .object({
+    type: z.literal('navigate'),
+    url: z.string(),
+  })
+  .passthrough();
+
+const pingCommandSchema = z
+  .object({
+    type: z.literal('ping'),
+  })
+  .passthrough();
+
+const screenshotCommandSchema = z
+  .object({
+    type: z.literal('screenshot'),
+    mode: z.union([z.literal('full'), z.literal('element')]).default('full'),
+    selector: z.union([z.string(), z.null()]).optional(),
+    quality: z.number().finite().min(0).max(100).optional(),
+    timeoutMs: z.number().finite().positive().optional(),
+    renderer: z
+      .union([z.literal('auto'), z.literal('puppeteer'), z.literal('html2canvas'), z.literal('html-to-image')])
+      .optional(),
+    hooks: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
+const discoverSelectorsCommandSchema = z
+  .object({
+    type: z.literal('discoverSelectors'),
+    scopeSelector: z.union([z.string(), z.null()]).optional(),
+    limit: z.number().int().positive().optional(),
+    includeHidden: z.boolean().optional(),
+  })
+  .passthrough();
+
+const commandSchema = z.discriminatedUnion('type', [
+  runScriptCommandSchema,
+  getDomCommandSchema,
+  navigateCommandSchema,
+  pingCommandSchema,
+  screenshotCommandSchema,
+  discoverSelectorsCommandSchema,
+]);
+
+const timeoutOverrideSchema = z.number().finite().positive().optional();
+
+type ConsoleEvent = z.infer<typeof consoleEventSchema>;
+type CommandResult = z.infer<typeof commandResultSchema>;
+type CommandWithoutId = z.infer<typeof commandSchema>;
+type CommandWithId = CommandWithoutId & { id: string };
+type ClientMessage = z.infer<typeof clientMessageSchema>;
+type RegisterClientMessage = Extract<ClientMessage, { kind: 'register' }>;
+type CommandRequest = { command: CommandWithoutId; timeoutMs?: number };
+
+type ServerMessage =
+  | { kind: 'command'; sessionId: string; command: CommandWithId }
+  | { kind: 'metadata'; sessionId: string; codename: string }
+  | { kind: 'disconnect'; reason: string };
+
+interface SessionMetadata {
+  readonly sessionId: string;
+  readonly userAgent: string;
+  readonly url: string;
+  readonly title: string;
+  readonly topOrigin: string;
+  readonly codename: string;
+  readonly createdAt: number;
+}
+
+const resolveDaemonPort = (value: unknown): number => {
+  if (value && typeof value === 'object' && value !== null) {
+    const portCandidate = (value as { port?: unknown }).port;
+    if (typeof portCandidate === 'number' && Number.isFinite(portCandidate) && portCandidate > 0) {
+      return portCandidate;
+    }
+  }
+  return SWEETLINK_DEFAULT_PORT;
+};
+
+const isSecretResolution = (value: unknown): value is SweetLinkSecretResolution => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Partial<SweetLinkSecretResolution>;
+  if (typeof candidate.secret !== 'string' || candidate.secret.length === 0) {
+    return false;
+  }
+  if (candidate.source !== 'env' && candidate.source !== 'file' && candidate.source !== 'generated') {
+    return false;
+  }
+  if (candidate.path !== undefined && typeof candidate.path !== 'string') {
+    return false;
+  }
+  return true;
+};
+
+const assertSecretResolution = (value: unknown): SweetLinkSecretResolution => {
+  if (!isSecretResolution(value)) {
+    throw new TypeError('SweetLink secret resolution payload is invalid');
+  }
+  return value;
+};
+
+const daemonPort = resolveDaemonPort(readSweetLinkEnv());
+
 async function main() {
   try {
-    const port = sweetLinkEnv.port;
-    if (await isDaemonAlreadyRunning(port)) {
-      log(`SweetLink daemon already running on https://localhost:${port}; exiting.`);
+    if (await isDaemonAlreadyRunning(daemonPort)) {
+      log(`SweetLink daemon already running on https://localhost:${daemonPort}; exiting.`);
       return;
     }
 
-    const secretResolution = await resolveSweetLinkSecret({ autoCreate: true });
-    log(
-      `SweetLink secret source: ${secretResolution.source}${secretResolution.path ? ` (${secretResolution.path})` : ''}`
-    );
+    const rawSecretResolution = await resolveSweetLinkSecret({ autoCreate: true });
+    const { secret, source, path } = assertSecretResolution(rawSecretResolution);
+    log(`SweetLink secret source: ${source}${path ? ` (${path})` : ''}`);
 
     ensureCertificates();
     const { cert, key } = loadCertificates();
 
-    const state = new SweetLinkState(secretResolution.secret);
+    const state = new SweetLinkState(secret);
 
     const server = createHttpsServer({ key, cert }, (req, res) => {
       void handleHttpRequest(state, req, res);
@@ -91,9 +308,9 @@ async function main() {
     const wsServer = new WebSocketServer({ server, path: SWEETLINK_WS_PATH });
     wsServer.on('connection', (socket) => state.handleSocket(socket));
 
-    server.listen(port, '127.0.0.1', () => {
-      log(`SweetLink daemon listening on https://localhost:${port}`);
-      log(`WebSocket endpoint ready at wss://localhost:${port}${SWEETLINK_WS_PATH}`);
+    server.listen(daemonPort, '127.0.0.1', () => {
+      log(`SweetLink daemon listening on https://localhost:${daemonPort}`);
+      log(`WebSocket endpoint ready at wss://localhost:${daemonPort}${SWEETLINK_WS_PATH}`);
       log('Press Ctrl+C to stop.');
     });
 
@@ -108,7 +325,7 @@ async function main() {
       unrefTimer(shutdownTimer);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     console.error(`SweetLink daemon failed to start: ${message}`);
     process.exitCode = 1;
   }
@@ -159,10 +376,7 @@ class SweetLinkState {
     socket.on('message', (data) => {
       try {
         const raw = decodeSocketPayload(data);
-        const message = JSON.parse(raw) as SweetLinkClientMessage;
-        if (!message || typeof message !== 'object') {
-          throw new Error('Invalid client message');
-        }
+        const message = parseClientMessage(JSON.parse(raw));
         switch (message.kind) {
           case 'register': {
             sessionId = this.#handleRegister(socket, message);
@@ -180,12 +394,9 @@ class SweetLinkState {
             this.#handleConsoleEvents(message.sessionId, message.events);
             break;
           }
-          default: {
-            throw new Error(`Unknown client message: ${(message as { kind?: string }).kind ?? 'unknown'}`);
-          }
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         console.warn(`SweetLink socket error: ${message}`);
       }
     });
@@ -230,7 +441,7 @@ class SweetLinkState {
     });
   }
 
-  async sendCommand(sessionId: string, rawCommand: Omit<SweetLinkCommand, 'id'>, timeoutMs = 15_000) {
+  async sendCommand(sessionId: string, rawCommand: CommandWithoutId, timeoutMs = 15_000): Promise<CommandResult> {
     const session = this.#sessions.get(sessionId);
     if (!session) {
       throw new Error('Session not found or offline');
@@ -240,8 +451,8 @@ class SweetLinkState {
     }
 
     const commandId = createSweetLinkCommandId();
-    const command: SweetLinkCommand = { ...rawCommand, id: commandId } as SweetLinkCommand;
-    const payload: SweetLinkServerMessage = {
+    const command: CommandWithId = { ...rawCommand, id: commandId };
+    const payload: ServerMessage = {
       kind: 'command',
       sessionId: session.metadata.sessionId,
       command,
@@ -249,7 +460,7 @@ class SweetLinkState {
 
     const serialized = JSON.stringify(payload);
 
-    return new Promise<SweetLinkCommandResult>((resolve, reject) => {
+    return new Promise<CommandResult>((resolve, reject) => {
       const timeout = setTimeout(() => {
         session.pending.delete(commandId);
         reject(new Error('Command timed out'));
@@ -278,12 +489,12 @@ class SweetLinkState {
     });
   }
 
-  getSessionConsole(sessionId: string): SweetLinkConsoleEvent[] {
+  getSessionConsole(sessionId: string): ConsoleEvent[] {
     const session = this.#sessions.get(sessionId);
     return session ? [...session.consoleBuffer] : [];
   }
 
-  #handleRegister(socket: WebSocket, message: SweetLinkClientMessage & { kind: 'register' }): string {
+  #handleRegister(socket: WebSocket, message: RegisterClientMessage): string {
     const token = message.token;
     const sessionId = message.sessionId;
     const payload = verifySweetLinkToken({ secret: this.#secret, token, expectedScope: 'session' });
@@ -291,7 +502,7 @@ class SweetLinkState {
       throw new Error('Session token mismatch');
     }
 
-    const metadata: SweetLinkSessionMetadata = {
+    const metadata: SessionMetadata = {
       sessionId,
       userAgent: message.userAgent,
       url: message.url,
@@ -318,7 +529,7 @@ class SweetLinkState {
 
     this.#sessions.set(sessionId, entry);
     try {
-      const metadataMessage: SweetLinkServerMessage = {
+      const metadataMessage: ServerMessage = {
         kind: 'metadata',
         sessionId,
         codename: metadata.codename,
@@ -326,7 +537,7 @@ class SweetLinkState {
       socket.send(JSON.stringify(metadataMessage));
       log(`Sent metadata for session ${sessionId} [${metadata.codename}]`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       console.warn(`[SweetLink] Failed to send session metadata for ${sessionId}: ${message}`);
     }
     log(`Registered SweetLink session ${sessionId} [${metadata.codename}] (${metadata.title || metadata.url})`);
@@ -340,7 +551,7 @@ class SweetLinkState {
     }
   }
 
-  #handleCommandResult(sessionId: string, result: SweetLinkCommandResult) {
+  #handleCommandResult(sessionId: string, result: CommandResult) {
     const session = this.#sessions.get(sessionId);
     if (!session) {
       return;
@@ -353,7 +564,7 @@ class SweetLinkState {
     pending.resolve(result);
   }
 
-  #handleConsoleEvents(sessionId: string, events: readonly SweetLinkConsoleEvent[]) {
+  #handleConsoleEvents(sessionId: string, events: readonly ConsoleEvent[]) {
     const session = this.#sessions.get(sessionId);
     if (!session || !events?.length) {
       return;
@@ -398,7 +609,7 @@ class SweetLinkState {
 }
 
 async function handleHttpRequest(state: SweetLinkState, req: IncomingMessage, res: ServerResponse) {
-  const basePort = sweetLinkEnv.port;
+  const basePort = daemonPort;
   const requestUrl = req.url ? new URL(req.url, `https://localhost:${basePort}`) : null;
   if (!requestUrl) {
     respondJson(res, 400, { error: 'Invalid request URL' });
@@ -425,7 +636,7 @@ async function handleHttpRequest(state: SweetLinkState, req: IncomingMessage, re
     const token = authorization.slice('Bearer '.length).trim();
     state.verifyCliToken(token);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     respondJson(res, 401, { error: message });
     return;
   }
@@ -462,16 +673,12 @@ async function handleHttpRequest(state: SweetLinkState, req: IncomingMessage, re
       return;
     }
     try {
-      const body = (await readJson(req)) as Partial<Omit<SweetLinkCommand, 'id'>> & { timeoutMs?: number };
-      if (!body?.type) {
-        throw new Error('Command type is required');
-      }
-      const { timeoutMs, ...commandFields } = body;
-      const command = commandFields as Omit<SweetLinkCommand, 'id'>;
+      const rawBody = await readJson(req);
+      const { command, timeoutMs } = parseCommandRequest(rawBody);
       const result = await state.sendCommand(sessionId, command, timeoutMs ?? 15_000);
       respondJson(res, 200, { result });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       respondJson(res, 400, { error: message });
     }
     return;
@@ -535,6 +742,28 @@ function decodeSocketPayload(data: WebSocket.RawData): string {
   return Buffer.from([]).toString('utf8');
 }
 
+function parseClientMessage(raw: unknown): ClientMessage {
+  const parsed = clientMessageSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('Invalid client message');
+  }
+  return parsed.data;
+}
+
+function parseCommandRequest(raw: unknown): CommandRequest {
+  const candidate = ensureObject(raw);
+  const command = commandSchema.parse(candidate);
+  const timeoutMs = timeoutOverrideSchema.parse(candidate.timeoutMs);
+  return { command, timeoutMs };
+}
+
+function ensureObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Request body must be a JSON object');
+  }
+  return value as Record<string, unknown>;
+}
+
 function ensureCertificates() {
   if (existsSync(CERT_PATH) && existsSync(KEY_PATH)) {
     return;
@@ -580,7 +809,7 @@ function log(message: string) {
 try {
   await main();
 } catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = getErrorMessage(error);
   console.error(`[SweetLink] Daemon failed: ${message}`);
   process.exit(1);
 }

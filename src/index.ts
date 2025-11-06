@@ -4,6 +4,9 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Command, CommanderError, Option } from 'commander';
+import { compact, uniq } from 'es-toolkit';
+import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
 import {
   createSweetLinkCommandId,
   type SweetLinkCommandResult,
@@ -11,9 +14,6 @@ import {
   type SweetLinkScreenshotRenderer,
   type SweetLinkSelectorCandidate,
 } from '../shared/src';
-import { Command, CommanderError, Option } from 'commander';
-import { compact, uniq } from 'es-toolkit';
-import type { Browser, ConsoleMessage, Page, Request } from 'playwright-core';
 import { registerClickCommand } from './commands/click';
 import { registerRunJsCommand } from './commands/run-js';
 import { registerTrustCaCommand } from './commands/trust-ca';
