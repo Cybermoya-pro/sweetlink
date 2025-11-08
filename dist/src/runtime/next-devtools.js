@@ -60,6 +60,13 @@ export async function fetchNextDevtoolsErrors(targetUrl) {
         return null;
     }
     const textChunk = content.find((entry) => entry?.type === 'text' && typeof entry.text === 'string');
-    return textChunk?.text ?? null;
+    if (!textChunk?.text) {
+        return null;
+    }
+    const normalized = textChunk.text.trim();
+    if (normalized.toLowerCase().startsWith('no errors detected')) {
+        return null;
+    }
+    return normalized;
 }
 //# sourceMappingURL=next-devtools.js.map
