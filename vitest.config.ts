@@ -25,6 +25,10 @@ export default defineConfig({
     environment: 'node',
     root: rootDirectory,
     globals: true,
+    coverage: {
+      provider: 'v8',
+      exclude: ['src/index.ts', 'examples/**'],
+    },
   },
   plugins: [sweetLinkAliasPlugin],
 });

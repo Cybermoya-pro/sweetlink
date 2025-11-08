@@ -45,6 +45,7 @@ const EVALUATION_SCRIPT = (() => {
     const result = {
       url: location.href,
       host,
+      title: document.title || null,
       handled: false,
       reason: null,
       action: null,
@@ -153,13 +154,16 @@ const EVALUATION_SCRIPT = (() => {
   })()`;
 })();
 
+const DEVTOOLS_POLL_LIMIT = 12;
+const DEVTOOLS_POLL_INTERVAL_MS = 400;
+
 const oauthAutomation: SweetLinkOauthAutomation = {
   async authorize(context) {
     const candidates = await collectCandidateUrls(context);
     let lastResult: TwitterOauthAutoAcceptResult = { handled: false, reason: 'button-not-found' };
 
     for (const candidate of candidates) {
-      const evaluation = await evaluateAuthorizePrompt(context, candidate);
+      const evaluation = await pollAuthorizePrompt(context, candidate);
       if (!evaluation) {
         continue;
       }
@@ -217,6 +221,29 @@ async function evaluateAuthorizePrompt(
     context.logDebugError('OAuth automation: evaluation failed', error);
     return null;
   }
+}
+
+async function pollAuthorizePrompt(
+  context: SweetLinkOauthAuthorizeContext,
+  targetUrl: string
+): Promise<TwitterOauthAutoAcceptResult | null> {
+  let lastResult: TwitterOauthAutoAcceptResult | null = null;
+  for (let attempt = 0; attempt < DEVTOOLS_POLL_LIMIT; attempt += 1) {
+    const evaluation = await evaluateAuthorizePrompt(context, targetUrl);
+    if (evaluation) {
+      lastResult = evaluation;
+      if (
+        evaluation.handled ||
+        evaluation.reason === 'requires-login' ||
+        evaluation.reason === 'not-twitter' ||
+        (evaluation.reason && evaluation.reason !== 'button-not-found')
+      ) {
+        return evaluation;
+      }
+    }
+    await context.delay(DEVTOOLS_POLL_INTERVAL_MS);
+  }
+  return lastResult;
 }
 
 async function authorizeWithPuppeteer(
@@ -340,5 +367,8 @@ function normalizeEvaluationResult(value: unknown): TwitterOauthAutoAcceptResult
     clickedText: typeof record.clickedText === 'string' || record.clickedText === null ? record.clickedText : undefined,
     hasUsernameInput: record.hasUsernameInput === true,
     hasPasswordInput: record.hasPasswordInput === true,
+    url: typeof record.url === 'string' ? record.url : undefined,
+    host: typeof record.host === 'string' ? record.host : undefined,
+    title: typeof record.title === 'string' ? record.title : undefined,
   };
 }

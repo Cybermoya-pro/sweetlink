@@ -6,13 +6,36 @@ import { buildCookieOrigins, collectChromeCookies, type PuppeteerCookieParam } f
 import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants';
 import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer';
 
-export async function primeControlledChromeCookies(options: {
-  devtoolsUrl: string;
-  targetUrl: string;
-  reload: boolean;
-  context: 'new-window' | 'existing-tab' | 'new-tab';
-}): Promise<void> {
-  const cookies = await collectChromeCookies(options.targetUrl);
+type PrimeChromeCookiesDeps = {
+  collectChromeCookies: typeof collectChromeCookies;
+  resolvePuppeteerPage: typeof resolvePuppeteerPage;
+  navigatePuppeteerPage: typeof navigatePuppeteerPage;
+  waitForPageReady: typeof waitForPageReady;
+  attemptPuppeteerReload: typeof attemptPuppeteerReload;
+  delay: typeof delay;
+  buildCookieOrigins: typeof buildCookieOrigins;
+};
+
+export async function primeControlledChromeCookies(
+  options: {
+    devtoolsUrl: string;
+    targetUrl: string;
+    reload: boolean;
+    context: 'new-window' | 'existing-tab' | 'new-tab';
+  },
+  deps: Partial<PrimeChromeCookiesDeps> = {}
+): Promise<void> {
+  const {
+    collectChromeCookies: collectCookies = collectChromeCookies,
+    resolvePuppeteerPage: resolvePage = resolvePuppeteerPage,
+    navigatePuppeteerPage: navigatePage = navigatePuppeteerPage,
+    waitForPageReady: waitForPage = waitForPageReady,
+    attemptPuppeteerReload: reloadPage = attemptPuppeteerReload,
+    delay: delayFn = delay,
+    buildCookieOrigins: buildOrigins = buildCookieOrigins,
+  } = deps;
+
+  const cookies = await collectCookies(options.targetUrl);
   if (cookies.length === 0) {
     console.log('No Chrome cookies found for this origin; continuing without priming the controlled window.');
     return;
@@ -44,7 +67,7 @@ export async function primeControlledChromeCookies(options: {
         console.warn('Unable to attach to controlled Chrome for cookie priming:', error);
         return;
       }
-      await delay(200);
+      await delayFn(200);
     }
   }
 
@@ -54,10 +77,10 @@ export async function primeControlledChromeCookies(options: {
   }
 
   try {
-    let page = await resolvePuppeteerPage(browser, options.targetUrl);
+    let page = await resolvePage(browser, options.targetUrl);
     if (!page) {
       const fallbackPage = await browser.newPage();
-      const navigated = await navigatePuppeteerPage(fallbackPage, options.targetUrl, 3);
+      const navigated = await navigatePage(fallbackPage, options.targetUrl, 3);
       if (!navigated) {
         console.warn('Unable to locate or recreate the controlled tab while priming cookies.');
         await fallbackPage.close().catch(() => {
@@ -68,12 +91,12 @@ export async function primeControlledChromeCookies(options: {
       page = fallbackPage;
     }
 
-    await waitForPageReady(page);
+    await waitForPage(page);
     await (page.setCookie as (...args: unknown[]) => Promise<void>)(...cookies);
-    await verifyCookieSync(page, options.targetUrl, cookies);
+    await verifyCookieSync(page, options.targetUrl, cookies, buildOrigins);
 
     if (options.reload) {
-      await attemptPuppeteerReload(page);
+      await reloadPage(page);
     }
 
     let contextLabel = 'controlled window';
@@ -119,14 +142,15 @@ export async function primeControlledChromeCookies(options: {
 async function verifyCookieSync(
   page: PuppeteerPage,
   targetUrl: string,
-  attempted: PuppeteerCookieParam[]
+  attempted: PuppeteerCookieParam[],
+  buildOrigins: typeof buildCookieOrigins = buildCookieOrigins
 ): Promise<void> {
   if (attempted.length === 0) {
     return;
   }
   try {
     const appliedNames = new Set<string>();
-    const origins = buildCookieOrigins(targetUrl);
+    const origins = buildOrigins(targetUrl);
     for (const origin of origins) {
       try {
         const cookies = await page.cookies(origin);

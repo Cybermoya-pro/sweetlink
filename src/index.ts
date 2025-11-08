@@ -70,6 +70,7 @@ import {
   serializeConsoleMessage,
   trimBuffer,
 } from './runtime/devtools';
+import { fetchNextDevtoolsErrors } from './runtime/next-devtools';
 import {
   attemptDevToolsCapture,
   maybeDescribeScreenshot,
@@ -106,7 +107,7 @@ import {
   triggerSweetLinkCliAuto,
   waitForSmokeRouteReady,
 } from './runtime/smoke';
-import { buildWaitCandidateUrls, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url';
+import { buildWaitCandidateUrls, configurePathRedirects, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url';
 import { buildScreenshotHooks } from './screenshot-hooks';
 import { fetchCliToken } from './token';
 import type { CliConfig, ServerConfig } from './types';
@@ -152,6 +153,7 @@ maybeInstallMkcertDispatcher();
 
 const LOOSE_PATH_SUFFIXES: ReadonlySet<string> = new Set(['home', 'index', 'overview']);
 const { config: fileConfig } = loadSweetLinkFileConfig();
+configurePathRedirects(fileConfig.redirects);
 const {
   appUrl: envAppUrl,
   daemonUrl: envDaemonUrl,
@@ -169,12 +171,14 @@ const defaultHealthPaths = fileConfig.healthChecks?.paths ?? null;
 
 const LOCAL_DEFAULT_APP_URL = 'http://localhost:3000';
 
-function deriveDefaultAppUrl(envUrl: string, config: SweetLinkFileConfig): string {
-  if (config.appUrl) {
-    return config.appUrl;
+function deriveDefaultAppUrl(envUrl: string | undefined, config: SweetLinkFileConfig): string {
+  const configuredAppUrl = typeof config.appUrl === 'string' ? config.appUrl.trim() : '';
+  if (configuredAppUrl.length > 0) {
+    return configuredAppUrl;
   }
   if (typeof config.port === 'number' && Number.isFinite(config.port) && config.port > 0) {
-    return applyPortToUrl(envUrl ?? LOCAL_DEFAULT_APP_URL, config.port);
+    const baseUrl = envUrl ?? LOCAL_DEFAULT_APP_URL;
+    return applyPortToUrl(baseUrl, config.port);
   }
   return envUrl ?? LOCAL_DEFAULT_APP_URL;
 }
@@ -628,7 +632,11 @@ async function handleControlledReuse(
           }.`
         );
       } else if (oauthAttempt.reason && oauthAttempt.reason !== 'button-not-found') {
-        console.log(`OAuth auto-accept skipped: ${oauthAttempt.reason}.`);
+        const locationHint =
+          oauthAttempt.url || oauthAttempt.title || oauthAttempt.host
+            ? ` (at ${oauthAttempt.title ?? oauthAttempt.host ?? 'unknown page'} ${oauthAttempt.url ?? ''})`
+            : '';
+        console.log(`OAuth auto-accept skipped: ${oauthAttempt.reason}${locationHint}.`);
       }
     } catch (error) {
       if (sweetLinkDebug) {
@@ -671,6 +679,12 @@ async function handleControlledReuse(
       ? 'Controlled Chrome reused but SweetLink did not register automatically.'
       : 'Controlled Chrome reused. DevTools automation disabled; verify the session from the UI if SweetLink does not appear.',
   });
+
+  await surfaceBlockingDiagnosticsAfterNavigation(
+    'SweetLink open',
+    context.enableDevtools ? reuseResult.devtoolsUrl : undefined,
+    context.targetUrlString
+  );
 }
 
 async function handleControlledLaunch(context: OpenCommandContext, waitToken: string | null): Promise<void> {
@@ -698,7 +712,11 @@ async function handleControlledLaunch(context: OpenCommandContext, waitToken: st
           }.`
         );
       } else if (oauthAttempt.reason && oauthAttempt.reason !== 'button-not-found') {
-        console.log(`OAuth auto-accept skipped: ${oauthAttempt.reason}.`);
+        const locationHint =
+          oauthAttempt.url || oauthAttempt.title || oauthAttempt.host
+            ? ` (at ${oauthAttempt.title ?? oauthAttempt.host ?? 'unknown page'} ${oauthAttempt.url ?? ''})`
+            : '';
+        console.log(`OAuth auto-accept skipped: ${oauthAttempt.reason}${locationHint}.`);
       }
     } catch (error) {
       if (sweetLinkDebug) {
@@ -733,6 +751,12 @@ async function handleControlledLaunch(context: OpenCommandContext, waitToken: st
       ? 'Controlled Chrome launched but SweetLink did not register automatically; keep the window open and retry from the UI if needed.'
       : 'Controlled Chrome launched without DevTools automation; complete the login manually if SweetLink does not register.',
   });
+
+  await surfaceBlockingDiagnosticsAfterNavigation(
+    'SweetLink open',
+    context.enableDevtools ? info.devtoolsUrl : undefined,
+    context.targetUrlString
+  );
 }
 
 interface SessionWaitOptions {
@@ -753,11 +777,12 @@ async function waitForSessionAfterOpen(
   if (options.trigger) {
     await options.trigger();
   }
+  const initialTimeoutSeconds = Math.min(12, context.timeoutSeconds);
   const session = await waitForSweetLinkSession({
     config: context.config,
     token: waitToken,
     targetUrl: context.targetUrlString,
-    timeoutSeconds: context.timeoutSeconds,
+    timeoutSeconds: initialTimeoutSeconds,
     devtoolsUrl: options.devtoolsUrl,
   });
   if (session) {
@@ -765,16 +790,20 @@ async function waitForSessionAfterOpen(
   }
   if (options.retryTrigger) {
     await options.retryTrigger();
+    const remainingSeconds = Math.max(5, context.timeoutSeconds - initialTimeoutSeconds);
     const retrySession = await waitForSweetLinkSession({
       config: context.config,
       token: waitToken,
       targetUrl: context.targetUrlString,
-      timeoutSeconds: context.timeoutSeconds,
+      timeoutSeconds: Math.min(12, remainingSeconds),
       devtoolsUrl: options.devtoolsUrl,
     });
     if (retrySession) {
       return;
     }
+  }
+  if (!process.exitCode || process.exitCode === 0) {
+    process.exitCode = 1;
   }
   if (options.failureMessage) {
     console.warn(options.failureMessage);
@@ -791,39 +820,92 @@ async function waitForSessionAfterOpen(
       console.warn('Failed to collect DevTools diagnostics:', error);
     }
 
-    try {
-      const snapshot = await collectPuppeteerDiagnostics(options.devtoolsUrl, context.targetUrlString);
-      if (snapshot) {
-        if (snapshot.title) {
-          console.warn(`SweetLink page title: ${snapshot.title}`);
+    await logPuppeteerPageSnapshot('SweetLink', options.devtoolsUrl, context.targetUrlString);
+  }
+}
+
+// Runs after every navigation so CLI users see the same crash text the browser shows.
+// Diagnostics come from the chrome-devtools MCP (invoked via mcporter) so we stay
+// in sync with the controlled tab even when the UI is broken.
+async function surfaceBlockingDiagnosticsAfterNavigation(
+  label: string,
+  devtoolsUrl: string | undefined,
+  targetUrl: string
+): Promise<void> {
+  if (!devtoolsUrl) {
+    return;
+  }
+
+  const candidates = buildWaitCandidateUrls(targetUrl);
+  let loggedBlocking = false;
+  try {
+    const diagnostics = await collectBootstrapDiagnostics(devtoolsUrl, candidates);
+    if (diagnostics) {
+      const bootstrapIncomplete =
+        diagnostics.autoFlag !== true ||
+        (typeof diagnostics.sessionStorageAuto === 'string' && diagnostics.sessionStorageAuto.length > 0);
+      const hasBlocking = diagnosticsContainBlockingIssues(diagnostics) || bootstrapIncomplete;
+      if (hasBlocking) {
+        console.warn(`${label}: detected runtime anomalies after navigation.`);
+        logBootstrapDiagnostics(label, diagnostics);
+        if (bootstrapIncomplete) {
+          console.warn(
+            `${label}: SweetLink bootstrap did not complete (autoFlag=${diagnostics.autoFlag}, sessionStorage=${diagnostics.sessionStorageAuto}).`
+          );
         }
-        if (snapshot.overlayText) {
-          console.warn('SweetLink overlay (via Puppeteer):');
-          for (const line of snapshot.overlayText.split('\n')) {
-            const trimmed = line.trim();
-            if (trimmed.length > 0) {
-              console.warn(`  ${trimmed}`);
-            }
-          }
-        } else if (snapshot.bodyText) {
-          console.warn('SweetLink body text (via Puppeteer):');
-          const lines = snapshot.bodyText
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-          const limit = 50;
-          const subset = lines.slice(0, limit);
-          for (const line of subset) {
-            console.warn(`  ${line}`);
-          }
-          if (lines.length > limit) {
-            console.warn(`  … truncated ${lines.length - limit} additional lines`);
-          }
+        await logPuppeteerPageSnapshot(label, devtoolsUrl, targetUrl);
+        loggedBlocking = true;
+        if (!process.exitCode || process.exitCode === 0) {
+          process.exitCode = 1;
         }
       }
-    } catch (error) {
-      console.warn('Failed to capture Puppeteer diagnostics:', error);
     }
+  } catch (error) {
+    console.warn('Failed to collect DevTools diagnostics after navigation:', error);
+  }
+
+  if (!loggedBlocking) {
+    const nextErrors = await fetchNextDevtoolsErrors(targetUrl);
+    if (nextErrors) {
+      console.warn(`${label}: Next.js DevTools error summary:\n${nextErrors}`);
+      if (!process.exitCode || process.exitCode === 0) {
+        process.exitCode = 1;
+      }
+    }
+  }
+}
+
+async function logPuppeteerPageSnapshot(label: string, devtoolsUrl: string, targetUrl: string): Promise<void> {
+  try {
+    // Puppeteer fallback gives us raw body text when the DevTools overlay fails to render,
+    // which is handy when we're stuck on intermediate screens (e.g., Twitter OAuth).
+    const snapshot = await collectPuppeteerDiagnostics(devtoolsUrl, targetUrl);
+    if (!snapshot) {
+      console.warn(`${label}: Puppeteer snapshot was unavailable.`);
+      return;
+    }
+    if (snapshot.title) {
+      console.warn(`${label} page title: ${snapshot.title}`);
+    }
+    if (snapshot.overlayText) {
+      console.warn(`${label} overlay (via Puppeteer):`);
+      for (const line of snapshot.overlayText.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed.length > 0) {
+          console.warn(`  ${trimmed}`);
+        }
+      }
+      return;
+    }
+    if (snapshot.bodyText && snapshot.bodyText.trim().length > 0) {
+      const condensed = snapshot.bodyText.replaceAll(/\s+/g, ' ').trim();
+      const snippet = condensed.length > 600 ? `${condensed.slice(0, 600)}…` : condensed;
+      console.warn(`${label} body text (via Puppeteer): ${snippet}`);
+    } else if (!snapshot.overlayText) {
+      console.warn(`${label}: Puppeteer snapshot contained no overlay or body text.`);
+    }
+  } catch (error) {
+    console.warn(`${label}: Failed to capture Puppeteer diagnostics:`, error);
   }
 }
 

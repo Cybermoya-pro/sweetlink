@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { buildWaitCandidateUrls, normalizeUrlForMatch, trimTrailingSlash, urlsRoughlyMatch } from '../src/runtime/url';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  buildWaitCandidateUrls,
+  configurePathRedirects,
+  normalizeUrlForMatch,
+  trimTrailingSlash,
+  urlsRoughlyMatch,
+} from '../src/runtime/url';
 
 describe('runtime/url utilities', () => {
+  beforeEach(() => {
+    configurePathRedirects(undefined);
+  });
+
   it('normalizes URLs and tolerates invalid input', () => {
     expect(normalizeUrlForMatch('https://app.example.dev/path')?.hostname).toBe('app.example.dev');
     expect(normalizeUrlForMatch('not-a-url')).toBeNull();
@@ -46,5 +56,15 @@ describe('runtime/url utilities', () => {
     expect(aliasCandidates).toEqual(
       expect.arrayContaining(['https://app.example.dev/insights', 'https://app.example.dev/insights/overview'])
     );
+  });
+
+  it('honors configured redirects when comparing URLs', () => {
+    configurePathRedirects({ '/': '/timeline', '/workspace': '/workspace/overview' });
+    expect(urlsRoughlyMatch('https://localhost:3000/', 'https://localhost:3000/timeline')).toBe(true);
+    expect(urlsRoughlyMatch('https://localhost:3000/workspace', 'https://localhost:3000/workspace/overview')).toBe(
+      true
+    );
+    const candidates = buildWaitCandidateUrls('https://localhost:3000/');
+    expect(candidates).toContain('https://localhost:3000/timeline');
   });
 });

@@ -32,11 +32,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/steipete/sweetistics.git",
+    "url": "https://github.com/steipete/sweetlink.git",
     "directory": "apps/sweetlink/daemon"
   },
   "bugs": {
-    "url": "https://github.com/steipete/sweetistics/issues"
+    "url": "https://github.com/steipete/sweetlink/issues"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

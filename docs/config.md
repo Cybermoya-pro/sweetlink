@@ -27,6 +27,7 @@ This guide documents every supported key for the config file and environment ove
 | `healthChecks.paths` | array | Extra HTTP paths (relative or absolute URLs) that SweetLink probes when checking server health. |
 | `smokeRoutes.defaults` | array | Default route list for `pnpm sweetlink smoke`. |
 | `smokeRoutes.presets` | object | Named route presets (e.g., `{ "admin": ["admin/users"] }`). |
+| `redirects` | object | Explicit path-to-path redirects SweetLink treats as success during navigation (e.g., `{ "/": "/timeline" }`). |
 | `oauthScript` | string | Path to an ESM module exporting `authorize(context)` for OAuth auto-approval. CLI flag `--oauth-script` overrides it. |
 | `servers` | array | Optional commands that start/check your local server per environment (`dev`, `prod`, ...). |
 
@@ -110,3 +111,4 @@ For example, `--oauth-script ./custom.ts` beats `sweetlink.json`’s `oauthScrip
 - `apps/sweetlink/README.md` – End-user CLI guide, including smoke tests and examples.
 - `docs/cli/sweetlink.md` – Pointer to the canonical README.
 - `apps/sweetlink/examples/oauth/twitter-oauth-automation.ts` – OAuth automation script template.
+- `redirects` — Optional object mapping source paths to their expected destination paths. SweetLink applies these rules when verifying smoke-test routes and DevTools navigations, so if your app immediately redirects `/` to `/timeline`, add `{ "/": "/timeline" }` to avoid false failures. Paths are normalized (leading slash, trailing slash trimmed) before comparison, and query parameters aren’t part of the rule.

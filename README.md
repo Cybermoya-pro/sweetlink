@@ -10,7 +10,7 @@ SweetLink is the agent-ready way to "connect your agent to your web app. Like Pl
 - **Controlled Chrome launch** – spin up a DevTools-enabled browser, sync cookies from your main profile, and auto-approve the Twitter OAuth consent flow.
 - **Smoke tests** – sweep configurable route presets (dashboard, reports, search, billing, settings) and flag authentication or runtime errors.
 - **Screenshots & selectors** – capture JPEGs via Puppeteer/HTML renderers and discover DOM selectors for automation.
-- **DevTools telemetry** – stream console/network logs to disk, dump diagnostics when a session fails to register, and click the OAuth authorize button on demand.
+- **DevTools telemetry** – stream console/network logs to disk, dump diagnostics when a session fails to register, call Next.js DevTools (`/_next/mcp`) for structured error summaries, and click the OAuth authorize button on demand.
 
 ## Prerequisites
 
@@ -44,6 +44,20 @@ Common workflows:
 - `pnpm sweetlink devtools authorize` – force-click the OAuth consent button when Twitter prompts.
 
 When a session fails to register, the CLI now emits a DevTools snapshot and Puppeteer scrape (overlay/body text) so build/runtime errors surface immediately.
+
+#### Timeouts & readiness
+
+Every `sweetlink open` waits until one of three things happens:
+
+1. The controlled tab re-registers with the daemon (happy path).
+2. The page reports it has finished loading but SweetLink still isn’t online, in which case we dump DevTools + Next.js diagnostics immediately.
+3. The command exceeds `--timeout` seconds (default `45`) and bails with the same diagnostics. Increase `--timeout <seconds>` if you intentionally run on a slow dev stack.
+
+Because the readiness check follows the page rather than a fixed delay, healthy sessions attach quickly while failures are surfaced within the configured timeout window.
+
+#### Next.js DevTools errors
+
+If the target app exposes the Next.js MCP endpoint (the default for `pnpm next dev`), SweetLink automatically calls `/_next/mcp` → `get_errors` whenever a navigation looks suspicious. The CLI prints the same markdown summary you would see in the Next.js overlay—complete with source-mapped stack traces—then falls back to the existing overlay/Puppeteer scraping for non-Next projects. No extra configuration is required as long as `next-devtools` is registered in `config/mcporter.json` (it is by default in the Sweetistics repo).
 
 ### TLS onboarding
 
@@ -155,6 +169,31 @@ export default automation;
 ```
 
 See the Twitter example for a complete script that works with X’s current consent UI (stacked DOM selectors, login fallback detection, Puppeteer retries).
+
+## Browser Runtime API
+
+SweetLink’s browser client is now a first-class export. Instead of copying 1,500+ lines of glue from the Sweetistics repo, pull in the runtime directly:
+
+```ts
+import {
+  createSessionStorageAdapter,
+  createSweetLinkClient,
+} from 'sweetlink/runtime/browser';
+
+const storage = createSessionStorageAdapter();
+
+export const sweetLinkClient = createSweetLinkClient({
+  storage,
+  status: {
+    onStatusSnapshot: (snapshot) => setSweetLinkStatus(snapshot),
+  },
+  autoReconnectHandshake: () => fetch('/api/admin/sweetlink/remote-handshake', { method: 'POST' }).then((res) => res.json()),
+});
+```
+
+The runtime mirrors everything we ship in production: websocket lifecycle, console buffering, screenshot hooks/renderers, selector discovery, and auto-reconnect with stored-session resume. Tests can import `sweetLinkBrowserTestHelpers` to reuse `createHookRunner`, `stripDataUrlPrefix`, and `commandSelectorSummary` without reaching into private modules.
+
+👉 See [`apps/sweetlink/browser.md`](./browser.md) for a step-by-step integration guide (handshake endpoint, custom storage adapters, DOM events) plus a reference implementation you can copy into other apps.
 
 ## Example App
 

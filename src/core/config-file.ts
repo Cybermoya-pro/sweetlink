@@ -16,6 +16,8 @@ export interface SweetLinkSmokeRoutesConfig {
   presets?: Record<string, string[]>;
 }
 
+export type SweetLinkRedirectsConfig = Record<string, string>;
+
 export interface SweetLinkServerConfig {
   env: string;
   start?: string[];
@@ -34,6 +36,7 @@ export interface SweetLinkFileConfig {
   cookieMappings?: SweetLinkCookieMapping[];
   healthChecks?: SweetLinkHealthChecksConfig;
   smokeRoutes?: SweetLinkSmokeRoutesConfig;
+  redirects?: SweetLinkRedirectsConfig;
   servers?: SweetLinkServerConfig[];
   oauthScript?: string;
 }
@@ -143,6 +146,10 @@ function normalizeConfig(raw: Record<string, unknown>, baseDirectory: string | n
   const smokeRoutes = normalizeSmokeRoutesSection(raw.smokeRoutes);
   if (smokeRoutes) {
     config.smokeRoutes = smokeRoutes;
+  }
+  const redirects = normalizeRedirectsSection(raw.redirects);
+  if (redirects) {
+    config.redirects = redirects;
   }
   const servers = normalizeServersSection(raw.servers, baseDirectory);
   if (servers.length > 0) {
@@ -318,4 +325,42 @@ function normalizeTimeout(value: unknown): number | null {
     }
   }
   return null;
+}
+
+function canonicalizeRedirectPath(value: string): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  let normalized = value.trim();
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`;
+  }
+  normalized = normalized.replace(/\/+$/, '');
+  if (!normalized) {
+    return '/';
+  }
+  return normalized || '/';
+}
+
+function normalizeRedirectsSection(value: unknown): SweetLinkRedirectsConfig | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const redirects: Record<string, string> = {};
+  for (const [rawSource, rawTarget] of entries) {
+    if (typeof rawSource !== 'string' || typeof rawTarget !== 'string') {
+      continue;
+    }
+    const sourcePath = canonicalizeRedirectPath(rawSource);
+    const targetPath = canonicalizeRedirectPath(rawTarget);
+    if (!sourcePath || !targetPath) {
+      continue;
+    }
+    redirects[sourcePath] = targetPath;
+  }
+  return Object.keys(redirects).length > 0 ? redirects : undefined;
 }

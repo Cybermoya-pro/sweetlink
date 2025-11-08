@@ -56,7 +56,6 @@ describe('runtime/smoke utilities', () => {
         'timeline/home',
         'insights',
         'search',
-        '',
         'pulse',
         'settings/account',
         'settings/activity',

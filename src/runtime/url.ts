@@ -2,6 +2,20 @@ import { URL } from 'node:url';
 
 export const LOOSE_PATH_SUFFIXES = ['home', 'index', 'overview'] as const;
 
+let pathRedirects: Record<string, string> = {};
+
+export function configurePathRedirects(map: Record<string, string> | undefined): void {
+  pathRedirects = {};
+  if (!map) {
+    return;
+  }
+  for (const [rawSource, rawTarget] of Object.entries(map)) {
+    const source = trimTrailingSlash(rawSource);
+    const target = trimTrailingSlash(rawTarget);
+    pathRedirects[source] = target;
+  }
+}
+
 export function normalizeUrlForMatch(input?: string | null): URL | null {
   if (!input) {
     return null;
@@ -48,8 +62,8 @@ export function urlsRoughlyMatch(a: string, b: string): boolean {
   if (urlA.origin !== urlB.origin) {
     return false;
   }
-  const pathA = trimTrailingSlash(urlA.pathname);
-  const pathB = trimTrailingSlash(urlB.pathname);
+  const pathA = normalizePathWithRedirect(urlA.pathname);
+  const pathB = normalizePathWithRedirect(urlB.pathname);
   if (pathA === pathB) {
     return true;
   }
@@ -90,6 +104,16 @@ export function buildWaitCandidateUrls(targetUrl: string, aliases?: readonly str
         const signinVariant = new URL(withoutQuery.toString());
         signinVariant.pathname = '/auth/signin';
         candidates.add(signinVariant.toString());
+      } else if (trimmedPath === '/login') {
+        const signinVariant = new URL(withoutQuery.toString());
+        signinVariant.pathname = '/auth/signin';
+        candidates.add(signinVariant.toString());
+      }
+      const redirectedPath = pathRedirects[trimmedPath];
+      if (redirectedPath && redirectedPath !== trimmedPath) {
+        const redirectUrl = new URL(withoutQuery.toString());
+        redirectUrl.pathname = redirectedPath;
+        candidates.add(redirectUrl.toString());
       }
     } else if (trimmedPath === '/') {
       // Marketing shell redirects "/" launches to the timeline; seed common timeline paths so
@@ -106,6 +130,13 @@ export function buildWaitCandidateUrls(targetUrl: string, aliases?: readonly str
       const authSignin = new URL(withoutQuery.toString());
       authSignin.pathname = '/auth/signin';
       candidates.add(authSignin.toString());
+
+      const redirectedPath = pathRedirects['/'];
+      if (redirectedPath && redirectedPath !== '/') {
+        const redirectUrl = new URL(withoutQuery.toString());
+        redirectUrl.pathname = redirectedPath;
+        candidates.add(redirectUrl.toString());
+      }
     }
   }
 
@@ -119,4 +150,10 @@ export function buildWaitCandidateUrls(targetUrl: string, aliases?: readonly str
   }
 
   return [...candidates];
+}
+
+function normalizePathWithRedirect(pathname: string): string {
+  const trimmed = trimTrailingSlash(pathname);
+  const redirected = pathRedirects[trimmed];
+  return redirected ?? trimmed;
 }

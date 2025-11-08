@@ -15,7 +15,7 @@ import {
 } from './devtools';
 import type { SweetLinkConsoleDump } from './session';
 import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session';
-import { buildWaitCandidateUrls, urlsRoughlyMatch } from './url';
+import { buildWaitCandidateUrls, configurePathRedirects, urlsRoughlyMatch } from './url';
 
 const normalizeRouteList = (input: unknown): string[] => {
   if (typeof input === 'string') {
@@ -64,7 +64,7 @@ type SmokeProgressFile = {
 };
 
 const builtinSmokePresets = {
-  main: ['timeline/home', 'insights', 'search', '', 'pulse'],
+  main: ['timeline/home', 'insights', 'search', 'pulse'],
   settings: [
     'settings/account',
     'settings/activity',
@@ -81,6 +81,7 @@ const builtinSmokePresets = {
 };
 
 const { config: fileConfig } = loadSweetLinkFileConfig();
+configurePathRedirects(fileConfig.redirects);
 
 const configuredPresets = normalizeSmokePresets(fileConfig.smokeRoutes?.presets);
 
