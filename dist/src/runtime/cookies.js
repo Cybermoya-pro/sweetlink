@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { loadSweetLinkFileConfig } from '../core/config-file';
-import { cloneProcessEnv } from '../core/env';
-import { cliEnv } from '../env';
-import { describeUnknown } from '../util/errors';
+import { loadSweetLinkFileConfig } from '../core/config-file.js';
+import { cloneProcessEnv } from '../core/env.js';
+import { cliEnv } from '../env.js';
+import { describeUnknown } from '../util/errors.js';
 let tldPatchedForLocalhost = false;
 let attemptedSqliteRebuild = false;
 /** Collects cookies from the main Chrome profile matching the provided URL. */

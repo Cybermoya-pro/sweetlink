@@ -1,4 +1,4 @@
-import { loadDomToImage, recordScreenshotError } from '../utils';
+import { loadDomToImage, recordScreenshotError } from '../utils.js';
 export async function captureWithDomToImage(targetInfo, quality) {
     const domToImage = await loadDomToImage();
     if (typeof domToImage.toJpeg !== 'function') {

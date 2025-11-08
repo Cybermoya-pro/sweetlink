@@ -1,9 +1,9 @@
 import { writeFile } from 'node:fs/promises';
-import { runCodexImagePrompt, runCodexTextPrompt } from '../codex';
-import { fetchJson } from '../http';
-import { describeAppForPrompt } from '../util/app-label';
-import { extractEventMessage, isErrnoException } from '../util/errors';
-import { formatConsoleArg } from './devtools';
+import { runCodexImagePrompt, runCodexTextPrompt } from '../codex.js';
+import { fetchJson } from '../http.js';
+import { describeAppForPrompt } from '../util/app-label.js';
+import { extractEventMessage, isErrnoException } from '../util/errors.js';
+import { formatConsoleArg } from './devtools.js';
 export async function maybeDescribeScreenshot(prompt, imagePath, options = {}) {
     const question = prompt?.trim();
     if (!question) {

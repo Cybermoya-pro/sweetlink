@@ -1,7 +1,7 @@
-import { logDebugError } from '../../util/errors';
-import { delay } from '../../util/time';
-import { urlsRoughlyMatch } from '../url';
-import { PAGE_READY_PRIMARY_TIMEOUT_MS, PAGE_READY_SECONDARY_TIMEOUT_MS, PUPPETEER_NAVIGATION_TIMEOUT_MS, PUPPETEER_PROTOCOL_TIMEOUT_MS, } from './constants';
+import { logDebugError } from '../../util/errors.js';
+import { delay } from '../../util/time.js';
+import { urlsRoughlyMatch } from '../url.js';
+import { PAGE_READY_PRIMARY_TIMEOUT_MS, PAGE_READY_SECONDARY_TIMEOUT_MS, PUPPETEER_NAVIGATION_TIMEOUT_MS, PUPPETEER_PROTOCOL_TIMEOUT_MS, } from './constants.js';
 export async function connectPuppeteerBrowser(puppeteer, browserURL, attempts) {
     let lastError;
     const totalAttempts = Math.max(1, attempts);

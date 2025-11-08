@@ -1,9 +1,9 @@
 import { uniq } from 'es-toolkit';
-import { sweetLinkDebug } from '../../env';
-import { delay } from '../../util/time';
-import { buildCookieOrigins, collectChromeCookies } from '../cookies';
-import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants';
-import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer';
+import { sweetLinkDebug } from '../../env.js';
+import { delay } from '../../util/time.js';
+import { buildCookieOrigins, collectChromeCookies } from '../cookies.js';
+import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants.js';
+import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer.js';
 export async function primeControlledChromeCookies(options, deps = {}) {
     const { collectChromeCookies: collectCookies = collectChromeCookies, resolvePuppeteerPage: resolvePage = resolvePuppeteerPage, navigatePuppeteerPage: navigatePage = navigatePuppeteerPage, waitForPageReady: waitForPage = waitForPageReady, attemptPuppeteerReload: reloadPage = attemptPuppeteerReload, delay: delayFn = delay, buildCookieOrigins: buildOrigins = buildCookieOrigins, } = deps;
     const cookies = await collectCookies(options.targetUrl);

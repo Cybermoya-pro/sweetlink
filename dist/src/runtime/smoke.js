@@ -2,13 +2,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { compact, uniq } from 'es-toolkit';
-import { loadSweetLinkFileConfig } from '../core/config-file';
-import { sweetLinkDebug } from '../env';
-import { describeUnknown, isErrnoException } from '../util/errors';
-import { delay } from '../util/time';
-import { collectBootstrapDiagnostics, diagnosticsContainBlockingIssues, evaluateInDevToolsTab, } from './devtools';
-import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session';
-import { buildWaitCandidateUrls, configurePathRedirects, urlsRoughlyMatch } from './url';
+import { loadSweetLinkFileConfig } from '../core/config-file.js';
+import { sweetLinkDebug } from '../env.js';
+import { describeUnknown, isErrnoException } from '../util/errors.js';
+import { delay } from '../util/time.js';
+import { collectBootstrapDiagnostics, diagnosticsContainBlockingIssues, evaluateInDevToolsTab, } from './devtools.js';
+import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session.js';
+import { buildWaitCandidateUrls, configurePathRedirects, urlsRoughlyMatch } from './url.js';
 const normalizeRouteList = (input) => {
     if (typeof input === 'string') {
         const trimmed = input.trim();

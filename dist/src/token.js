@@ -1,8 +1,8 @@
 import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '../shared/src/index.js';
 import { resolveSweetLinkSecret } from '../shared/src/node.js';
-import { fetchJson } from './http';
-import { describeAppForPrompt } from './util/app-label';
-import { describeUnknown } from './util/errors';
+import { fetchJson } from './http.js';
+import { describeAppForPrompt } from './util/app-label.js';
+import { describeUnknown } from './util/errors.js';
 let cachedCliToken = null;
 export function resetCliTokenCache() {
     cachedCliToken = null;

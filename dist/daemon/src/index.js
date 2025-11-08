@@ -23,7 +23,7 @@ import { readSweetLinkEnv } from '@sweetlink/shared/env';
 import { getDefaultSweetLinkSecretPath, resolveSweetLinkSecret, } from '@sweetlink/shared/node';
 import WebSocket, { WebSocketServer } from 'ws';
 import { z } from 'zod';
-import { generateSessionCodename } from './codename';
+import { generateSessionCodename } from './codename.js';
 const SHUTDOWN_GRACE_MS = 1000;
 const unrefTimer = (handle) => {
     const candidate = handle;

@@ -1,4 +1,4 @@
-import { logDebugError } from '../util/errors';
+import { logDebugError } from '../util/errors.js';
 const ACCEPT_HEADER = 'application/json, text/event-stream';
 async function callNextDevtoolsTool(origin, toolName, args = {}) {
     const controller = new AbortController();

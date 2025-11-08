@@ -1,5 +1,5 @@
-import { sweetLinkDebug } from '../../env';
-import { connectPuppeteerBrowser, resolvePuppeteerPage, waitForPageReady } from './puppeteer';
+import { sweetLinkDebug } from '../../env.js';
+import { connectPuppeteerBrowser, resolvePuppeteerPage, waitForPageReady } from './puppeteer.js';
 export async function collectPuppeteerDiagnostics(devtoolsUrl, targetUrl) {
     let puppeteer;
     try {

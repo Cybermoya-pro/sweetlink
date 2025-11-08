@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,29 +22,43 @@ const collectFiles = (dir: string) => {
 try {
   const stats = statSync(distDir);
   if (!stats.isDirectory()) {
-    console.log('[fix-shared-imports] dist/ not found, skipping.');
+    console.log('[fix-imports] dist/ not found, skipping.');
     process.exit(0);
   }
 } catch {
-  console.log('[fix-shared-imports] dist/ not found, skipping.');
+  console.log('[fix-imports] dist/ not found, skipping.');
   process.exit(0);
 }
 
 collectFiles(distDir);
 
-const importPattern = /from\s+(['"])(\.\.\/(?:\.\.\/)*shared\/src(?:\/[-\w]+)?)\1/g;
+const importPattern = /(import|export)\s+(?:[^'";]+?\s+from\s+)?(['"])(\.\.\/[^'";]+|\.\/[^'";]+)\2/g;
 let patchedFileCount = 0;
+
+const resolveReplacement = (filePath: string, specifier: string): string | null => {
+  const baseDir = path.dirname(filePath);
+  const absSpecifier = path.resolve(baseDir, specifier);
+  const directFile = `${absSpecifier}.js`;
+  if (existsSync(directFile)) {
+    return specifier.endsWith('.js') ? null : `${specifier}.js`;
+  }
+  const indexFile = path.join(absSpecifier, 'index.js');
+  if (existsSync(indexFile)) {
+    return specifier.endsWith('/index.js') ? null : `${specifier}/index.js`;
+  }
+  return null;
+};
 
 for (const filePath of filesToPatch) {
   let content = readFileSync(filePath, 'utf8');
   let modified = false;
-  content = content.replace(importPattern, (full, quote, specifier) => {
-    if (specifier.endsWith('.js')) {
-      return full;
+  content = content.replace(importPattern, (fullMatch, keyword, quote, specifier) => {
+    const replacement = resolveReplacement(filePath, specifier);
+    if (!replacement) {
+      return fullMatch;
     }
     modified = true;
-    const nextSpecifier = specifier.endsWith('/src') ? `${specifier}/index.js` : `${specifier}.js`;
-    return `from ${quote}${nextSpecifier}${quote}`;
+    return fullMatch.replace(specifier, replacement);
   });
   if (modified) {
     writeFileSync(filePath, content);
@@ -52,4 +66,4 @@ for (const filePath of filesToPatch) {
   }
 }
 
-console.log(`[fix-shared-imports] Patched ${patchedFileCount} files.`);
+console.log(`[fix-imports] Patched ${patchedFileCount} files.`);

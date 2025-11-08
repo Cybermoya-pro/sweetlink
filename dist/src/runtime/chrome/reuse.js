@@ -1,12 +1,12 @@
 import net from 'node:net';
-import { cliEnv } from '../../env';
-import { logDebugError } from '../../util/errors';
-import { loadDevToolsConfig, saveDevToolsConfig } from '../devtools';
-import { discoverDevToolsEndpoints } from '../devtools/cdp';
-import { urlsRoughlyMatch } from '../url';
-import { primeControlledChromeCookies } from './cookies';
-import { connectPuppeteerBrowser, navigatePuppeteerPage } from './puppeteer';
-import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START, PUPPETEER_RELOAD_TIMEOUT_MS } from './reuse/constants';
+import { cliEnv } from '../../env.js';
+import { logDebugError } from '../../util/errors.js';
+import { loadDevToolsConfig, saveDevToolsConfig } from '../devtools.js';
+import { discoverDevToolsEndpoints } from '../devtools/cdp.js';
+import { urlsRoughlyMatch } from '../url.js';
+import { primeControlledChromeCookies } from './cookies.js';
+import { connectPuppeteerBrowser, navigatePuppeteerPage } from './puppeteer.js';
+import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START, PUPPETEER_RELOAD_TIMEOUT_MS } from './reuse/constants.js';
 export async function reuseExistingControlledChrome(target, options) {
     const explicitDevtoolsUrl = cliEnv.devtoolsUrl?.trim();
     const existingConfig = await loadDevToolsConfig();

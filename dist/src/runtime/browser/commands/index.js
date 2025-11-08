@@ -1,9 +1,9 @@
-import { loadDefaultExportFromUrl } from '../module-loader';
-import { discoverSelectorCandidates } from '../selector-discovery';
-import { CONSOLE_LEVELS, getConsoleMethod, setConsoleMethod } from '../utils/console';
-import { getBrowserWindow } from '../utils/environment';
-import { toError } from '../utils/errors';
-import { sanitizeResult } from '../utils/sanitize';
+import { loadDefaultExportFromUrl } from '../module-loader.js';
+import { discoverSelectorCandidates } from '../selector-discovery.js';
+import { CONSOLE_LEVELS, getConsoleMethod, setConsoleMethod } from '../utils/console.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { toError } from '../utils/errors.js';
+import { sanitizeResult } from '../utils/sanitize.js';
 export function createCommandExecutor(context) {
     return {
         execute: (command) => executeCommand(command, context),

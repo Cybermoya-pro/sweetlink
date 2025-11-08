@@ -1,6 +1,6 @@
-import { getBrowserWindow } from '../../utils/environment';
-import { commandSelectorSummary, HTML2CANVAS_TARGET_ATTR } from '../targets';
-import { normalizeOklchColors, patchHtml2canvasColorParser, recordScreenshotError } from '../utils';
+import { getBrowserWindow } from '../../utils/environment.js';
+import { commandSelectorSummary, HTML2CANVAS_TARGET_ATTR } from '../targets.js';
+import { normalizeOklchColors, patchHtml2canvasColorParser, recordScreenshotError } from '../utils.js';
 let html2canvasModulePromise = null;
 async function loadHtml2Canvas() {
     if (!html2canvasModulePromise) {

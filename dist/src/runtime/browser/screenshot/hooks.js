@@ -1,7 +1,7 @@
-import { loadDefaultExportFromUrl } from '../module-loader';
-import { getBrowserWindow } from '../utils/environment';
-import { clamp } from '../utils/number';
-import { isRecord, toTrimmedNonEmptyString } from '../utils/object';
+import { loadDefaultExportFromUrl } from '../module-loader.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { clamp } from '../utils/number.js';
+import { isRecord, toTrimmedNonEmptyString } from '../utils/object.js';
 export const isScreenshotHook = (candidate) => {
     const record = isRecord(candidate)
         ? candidate

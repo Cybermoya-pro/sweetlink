@@ -1,10 +1,10 @@
-import { getBrowserWindow } from '../utils/environment';
-import { clamp } from '../utils/number';
-import { applyScreenshotPreHooks } from './hooks';
-import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image';
-import { captureWithHtml2Canvas } from './renderers/html2canvas';
-import { resolveScreenshotTarget } from './targets';
-import { loadDomToImage, recordScreenshotError } from './utils';
+import { getBrowserWindow } from '../utils/environment.js';
+import { clamp } from '../utils/number.js';
+import { applyScreenshotPreHooks } from './hooks.js';
+import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image.js';
+import { captureWithHtml2Canvas } from './renderers/html2canvas.js';
+import { resolveScreenshotTarget } from './targets.js';
+import { loadDomToImage, recordScreenshotError } from './utils.js';
 export function createScreenshotHooks() {
     let preloadPromise = null;
     const preloadLibraries = () => {
@@ -76,7 +76,7 @@ export function createScreenshotHooks() {
         testHelpers: { stripDataUrlPrefix },
     };
 }
-export { createHookRunner } from './hooks';
+export { createHookRunner } from './hooks.js';
 async function tryCaptureWithDomToImage(targetInfo, quality) {
     try {
         const result = await captureWithDomToImage(targetInfo, quality);

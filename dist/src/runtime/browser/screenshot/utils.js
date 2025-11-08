@@ -1,7 +1,7 @@
 import { regex } from 'arkregex';
 import { compact } from 'es-toolkit';
-import { loadDomToImageFromScript } from '../dom-to-image-loader';
-import { toError } from '../utils/errors';
+import { loadDomToImageFromScript } from '../dom-to-image-loader.js';
+import { toError } from '../utils/errors.js';
 let domToImagePromise = null;
 let html2canvasColorPatchState = 'unpatched';
 const patchedCssWindows = new WeakSet();

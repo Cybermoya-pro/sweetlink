@@ -1,4 +1,4 @@
-import { BENIGN_CONSOLE_TYPES, IGNORABLE_DIAGNOSTIC_MESSAGES } from './constants';
+import { BENIGN_CONSOLE_TYPES, IGNORABLE_DIAGNOSTIC_MESSAGES } from './constants.js';
 const createLineCollector = (maxLines = 100) => {
     const lines = [];
     let truncatedCount = 0;

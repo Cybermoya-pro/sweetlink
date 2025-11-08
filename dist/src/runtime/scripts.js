@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import { sweetLinkDebug } from '../env';
+import { sweetLinkDebug } from '../env.js';
 /** Resolve inline or file-based JavaScript payloads for run-js commands. */
 export async function resolveScript(options, inline) {
     if (options.file) {

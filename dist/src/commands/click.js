@@ -1,11 +1,11 @@
-import { analyzeConsoleWithCodex } from '../codex';
-import { resolveConfig } from '../core/config';
-import { readCommandOptions } from '../core/env';
-import { sweetLinkDebug } from '../env';
-import { renderCommandResult } from '../runtime/scripts';
-import { buildClickScript, executeRunScriptCommand, fetchConsoleEvents, resolvePromptOption, resolveSessionIdFromHint, } from '../runtime/session';
-import { extractEventMessage } from '../util/errors';
-import { delay } from '../util/time';
+import { analyzeConsoleWithCodex } from '../codex.js';
+import { resolveConfig } from '../core/config.js';
+import { readCommandOptions } from '../core/env.js';
+import { sweetLinkDebug } from '../env.js';
+import { renderCommandResult } from '../runtime/scripts.js';
+import { buildClickScript, executeRunScriptCommand, fetchConsoleEvents, resolvePromptOption, resolveSessionIdFromHint, } from '../runtime/session.js';
+import { extractEventMessage } from '../util/errors.js';
+import { delay } from '../util/time.js';
 const POST_CLICK_CONSOLE_LIMIT = 20;
 export function registerClickCommand(program) {
     program

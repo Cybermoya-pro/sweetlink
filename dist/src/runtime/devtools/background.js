@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { cloneProcessEnv, readLocalEnvString } from '../../core/env';
-import { sweetLinkDebug } from '../../env';
-import { isErrnoException } from '../../util/errors';
-import { DEFAULT_CLI_ENTRYPOINT, DEVTOOLS_LISTENER_PID_PATH } from './constants';
+import { cloneProcessEnv, readLocalEnvString } from '../../core/env.js';
+import { sweetLinkDebug } from '../../env.js';
+import { isErrnoException } from '../../util/errors.js';
+import { DEFAULT_CLI_ENTRYPOINT, DEVTOOLS_LISTENER_PID_PATH } from './constants.js';
 export async function ensureBackgroundDevtoolsListener(params) {
     const disableAutoListener = readLocalEnvString('SWEETLINK_DISABLE_AUTO_DEVTOOLS') === '1';
     if (disableAutoListener) {

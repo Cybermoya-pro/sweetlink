@@ -2,10 +2,10 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { cliEnv } from '../../env';
-import { saveDevToolsConfig } from '../devtools';
-import { primeControlledChromeCookies } from './cookies';
-import { findAvailablePort } from './reuse';
+import { cliEnv } from '../../env.js';
+import { saveDevToolsConfig } from '../devtools.js';
+import { primeControlledChromeCookies } from './cookies.js';
+import { findAvailablePort } from './reuse.js';
 const DEFAULT_MAC_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 export async function launchChrome(target, options = {}) {
     const chromePath = cliEnv.chromePath ?? DEFAULT_MAC_CHROME;

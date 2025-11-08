@@ -1,10 +1,10 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { logDebugError } from '../../util/errors';
-import { delay } from '../../util/time';
-import { connectPuppeteerBrowser, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady, } from '../chrome/puppeteer';
-import { urlsRoughlyMatch } from '../url';
-import { evaluateInDevToolsTab, fetchDevToolsTabsWithRetry } from './cdp';
+import { logDebugError } from '../../util/errors.js';
+import { delay } from '../../util/time.js';
+import { connectPuppeteerBrowser, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady, } from '../chrome/puppeteer.js';
+import { urlsRoughlyMatch } from '../url.js';
+import { evaluateInDevToolsTab, fetchDevToolsTabsWithRetry } from './cdp.js';
 let cachedAutomation = null;
 const warnedMissingScriptPaths = new Set();
 export async function attemptTwitterOauthAutoAccept({ devtoolsUrl, sessionUrl, scriptPath, }) {

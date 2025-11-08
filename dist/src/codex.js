@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { describeAppForPrompt } from './util/app-label';
-import { extractEventMessage, isErrnoException } from './util/errors';
+import { describeAppForPrompt } from './util/app-label.js';
+import { extractEventMessage, isErrnoException } from './util/errors.js';
 const CODEX_ARGS = ['exec', '--yolo', '--skip-git-repo-check'];
 /** Invokes the Codex CLI with optional stdin. */
 async function runCodexExec(args, options = {}) {

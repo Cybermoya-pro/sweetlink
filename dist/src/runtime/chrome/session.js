@@ -1,8 +1,8 @@
-import { fetchJson } from '../../http';
-import { logDebugError } from '../../util/errors';
-import { delay } from '../../util/time';
-import { saveDevToolsConfig } from '../devtools';
-import { urlsRoughlyMatch } from '../url';
+import { fetchJson } from '../../http.js';
+import { logDebugError } from '../../util/errors.js';
+import { delay } from '../../util/time.js';
+import { saveDevToolsConfig } from '../devtools.js';
+import { urlsRoughlyMatch } from '../url.js';
 export async function signalSweetLinkBootstrap(devtoolsUrl, targetUrl) {
     try {
         const payload = { devtoolsUrl, targetUrl };

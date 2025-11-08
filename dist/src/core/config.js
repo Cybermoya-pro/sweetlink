@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { sweetLinkEnv } from '../env';
-import { formatAppLabel, normalizeAppLabel } from '../util/app-label';
-import { loadSweetLinkFileConfig } from './config-file';
-import { readCommandOptions } from './env';
+import { sweetLinkEnv } from '../env.js';
+import { formatAppLabel, normalizeAppLabel } from '../util/app-label.js';
+import { loadSweetLinkFileConfig } from './config-file.js';
+import { readCommandOptions } from './env.js';
 const normalizeUrlOption = (value, fallback) => {
     if (typeof value === 'string' && value.trim().length > 0) {
         return value;

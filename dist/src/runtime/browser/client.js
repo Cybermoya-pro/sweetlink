@@ -1,14 +1,14 @@
-import { createCommandExecutor } from './commands';
-import { createHookRunner, createScreenshotHooks } from './screenshot';
-import { stripDataUrlPrefix } from './screenshot/renderers/dom-to-image';
-import { commandSelectorSummary } from './screenshot/targets';
-import { createSessionStorageAdapter } from './storage/session-storage';
-import { DEFAULT_STATUS_SNAPSHOT, } from './types';
-import { getConsoleMethod, setConsoleMethod } from './utils/console';
-import { getBrowserWindow } from './utils/environment';
-import { describeUnknown, toError } from './utils/errors';
-import { sanitizeResult } from './utils/sanitize';
-import { normalizeExpiresAtMs } from './utils/time';
+import { createCommandExecutor } from './commands/index.js';
+import { createHookRunner, createScreenshotHooks } from './screenshot/index.js';
+import { stripDataUrlPrefix } from './screenshot/renderers/dom-to-image.js';
+import { commandSelectorSummary } from './screenshot/targets.js';
+import { createSessionStorageAdapter } from './storage/session-storage.js';
+import { DEFAULT_STATUS_SNAPSHOT, } from './types.js';
+import { getConsoleMethod, setConsoleMethod } from './utils/console.js';
+import { getBrowserWindow } from './utils/environment.js';
+import { describeUnknown, toError } from './utils/errors.js';
+import { sanitizeResult } from './utils/sanitize.js';
+import { normalizeExpiresAtMs } from './utils/time.js';
 const defaultLogger = {
     info: (message, ...details) => {
         if (details.length > 0) {
