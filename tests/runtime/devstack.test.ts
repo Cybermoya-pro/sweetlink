@@ -77,7 +77,10 @@ describe('maybeInstallMkcertDispatcher', () => {
 
     maybeInstallMkcertDispatcher();
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to register SweetLink TLS CA'), expect.any(Error));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to register SweetLink TLS CA'),
+      expect.any(Error)
+    );
     expect(setGlobalDispatcherMock).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
@@ -88,10 +91,7 @@ describe('isAppReachable', () => {
     fetchMock.mockResolvedValueOnce({ ok: true });
 
     await expect(isAppReachable('https://app.example.dev', ['/status'])).resolves.toBe(true);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://app.example.dev',
-      expect.objectContaining({ method: 'HEAD' })
-    );
+    expect(fetchMock).toHaveBeenCalledWith('https://app.example.dev', expect.objectContaining({ method: 'HEAD' }));
   });
 
   it('returns false when requests fail with non-network errors', async () => {
@@ -115,11 +115,15 @@ describe('ensureDevStackRunning', () => {
       repoRoot: '/repo',
       server: {
         start: ['npm', 'run', 'dev'],
-        timeoutMs: 1_500,
+        timeoutMs: 1500,
       },
     });
 
-    expect(spawnMock).toHaveBeenCalledWith('npm', ['run', 'dev'], expect.objectContaining({ cwd: '/repo', detached: true }));
+    expect(spawnMock).toHaveBeenCalledWith(
+      'npm',
+      ['run', 'dev'],
+      expect.objectContaining({ cwd: '/repo', detached: true })
+    );
     expect(childProcess.unref).toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(logSpy).toHaveBeenCalledWith('Dev stack is online.');

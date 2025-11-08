@@ -1,11 +1,39 @@
 ---
-summary: Notes for keeping the standalone Sweetlink repo in sync with the Sweetistics monorepo.
+summary: Notes for keeping the standalone SweetLink repo in sync with the Sweetistics monorepo.
 ---
 
-## Monorepo Sync Ritual
+## Sync Ritual
 
-- Run `rsync -av --delete --exclude '.git/' --exclude 'node_modules/' --exclude 'dist/' --exclude 'coverage/' --exclude 'tmp/' /Users/steipete/Projects/sweetistics/apps/sweetlink/ /Users/steipete/Projects/sweetlink/` from the Sweetistics root whenever we need to refresh this repo.
-- Because this lives outside the monorepo, skip `./runner` and call git/pnpm directly in `~/Projects/sweetlink`.
-- Recreate standalone-only files after the sync. Today that means restoring `.gitignore` (node_modules, tmp, coverage artifacts) so local cruft stays out of commits.
-- Install deps (`pnpm install`) because rsync excludes `node_modules/`, then run `pnpm test` and `pnpm run build` to make sure Vitest/unit coverage and the publish build are still healthy. Note: as of 2025-11-08 `pnpm test` fails early because `tsconfig.json` extends `../../tsconfig.base.json`; either copy that file in or point the config at a local base before shipping.
-- Once checks are green (or you’ve documented the failure reason), commit with `chore: sync sweetlink from sweetistics` (or a scoped variant) and push to `origin/main`.
+1. From the Sweetistics root run the mirrored rsync, now excluding standalone-only files so CI artifacts stick around:
+   ```sh
+   rsync -av --delete \
+     --exclude '.git/' \
+     --exclude 'node_modules/' \
+     --exclude 'dist/' \
+     --exclude 'coverage/' \
+     --exclude 'tmp/' \
+     --exclude '.github/' \
+     --exclude '.gitignore' \
+     --exclude 'pnpm-lock.yaml' \
+     --exclude 'sweetlink.md' \
+     --exclude 'tsconfig.base.json' \
+     /Users/steipete/Projects/sweetistics/apps/sweetlink/ /Users/steipete/Projects/sweetlink/
+   ```
+2. In `~/Projects/sweetlink` run `pnpm run standalone:post-sync`. The script copies `../sweetistics/tsconfig.base.json` (override with `SWEETLINK_UPSTREAM_TSCONFIG` when the path differs) and patches `tsconfig.json` so `tsc` continues to resolve `@sweetlink/*` imports inside this repo.
+3. Reinstall deps (`pnpm install`) to refresh the local lockfile and run `pnpm test && pnpm run build` before committing/pushing.
+
+If the upstream repo moves or you need to compare a fresh `tsconfig`, point `SWEETLINK_UPSTREAM_TSCONFIG` at the correct file and rerun the post-sync script.
+
+## Continuous Integration
+
+- `.github/workflows/ci.yml` runs on every push/PR to `main` using Node 22 with cached pnpm modules.
+- Steps: `pnpm install --frozen-lockfile`, `pnpm run lint`, and `pnpm test`. Add more jobs (build, publish dry-run, etc.) as the standalone repo grows.
+- Because rsync excludes `.github/` now, future syncs keep the workflow intact and CI stays green after each mirror.
+
+## Checklist Before Push
+
+- `pnpm run standalone:post-sync`
+- `pnpm install`
+- `pnpm test`
+- `pnpm run build`
+- `git status` should show only the expected upstream deltas + lockfile bump.

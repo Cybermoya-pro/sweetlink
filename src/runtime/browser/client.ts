@@ -1,30 +1,31 @@
+import { type CommandExecutor, createCommandExecutor } from './commands';
+import { createHookRunner, createScreenshotHooks } from './screenshot';
+import { stripDataUrlPrefix } from './screenshot/renderers/dom-to-image';
+import { commandSelectorSummary } from './screenshot/targets';
+import { createSessionStorageAdapter } from './storage/session-storage';
+import type {
+  SweetLinkLogger,
+  SweetLinkScreenshotHooks,
+  SweetLinkStatusAdapter,
+  SweetLinkStorageAdapter,
+} from './types';
 import {
-  DEFAULT_STATUS_SNAPSHOT,
   type ActiveSweetLinkSession,
+  DEFAULT_STATUS_SNAPSHOT,
   type SweetLinkClient,
   type SweetLinkClientOptions,
   type SweetLinkCommandResult,
+  type SweetLinkHandshakeResponse,
   type SweetLinkServerCommandMessage,
   type SweetLinkServerMessage,
   type SweetLinkSessionBootstrap,
   type SweetLinkStatusSnapshot,
 } from './types';
-import { createCommandExecutor, type CommandExecutor } from './commands';
-import { createScreenshotHooks, createHookRunner } from './screenshot';
-import { stripDataUrlPrefix } from './screenshot/renderers/dom-to-image';
-import { commandSelectorSummary } from './screenshot/targets';
-import { normalizeExpiresAtMs } from './utils/time';
-import { toError, describeUnknown } from './utils/errors';
-import { getBrowserWindow } from './utils/environment';
-import type {
-  SweetLinkScreenshotHooks,
-  SweetLinkStorageAdapter,
-  SweetLinkLogger,
-  SweetLinkStatusAdapter,
-} from './types';
-import { createSessionStorageAdapter } from './storage/session-storage';
-import { sanitizeResult } from './utils/sanitize';
 import { getConsoleMethod, setConsoleMethod } from './utils/console';
+import { getBrowserWindow } from './utils/environment';
+import { describeUnknown, toError } from './utils/errors';
+import { sanitizeResult } from './utils/sanitize';
+import { normalizeExpiresAtMs } from './utils/time';
 
 const defaultLogger: SweetLinkLogger = {
   info: (message, ...details) => {
@@ -46,19 +47,23 @@ const defaultLogger: SweetLinkLogger = {
   },
 };
 
+type MutableActiveSweetLinkSession = {
+  -readonly [Key in keyof ActiveSweetLinkSession]: ActiveSweetLinkSession[Key];
+};
+
 interface NormalizedOptions {
   readonly storage: SweetLinkStorageAdapter;
   readonly status: SweetLinkStatusAdapter;
   readonly logger: SweetLinkLogger;
   readonly screenshot: SweetLinkScreenshotHooks;
   readonly windowRef: Window | null;
-  readonly autoReconnectHandshake?: () => Promise<SweetLinkSessionBootstrap>;
+  readonly autoReconnectHandshake?: () => Promise<SweetLinkHandshakeResponse>;
   readonly maxReconnectAttempts: number;
   readonly reconnectBaseDelayMs: number;
 }
 
 class SweetLinkBrowserClient implements SweetLinkClient {
-  private currentSession: ActiveSweetLinkSession | null = null;
+  private currentSession: MutableActiveSweetLinkSession | null = null;
   private reconnectTimer: number | null = null;
   private reconnectAttempts = 0;
   private lastReconnectLogAt = 0;
@@ -70,7 +75,7 @@ class SweetLinkBrowserClient implements SweetLinkClient {
   private readonly logger: SweetLinkLogger;
   private readonly screenshot: SweetLinkScreenshotHooks;
   private readonly windowRef: Window | null;
-  private readonly autoReconnectHandshake?: () => Promise<SweetLinkSessionBootstrap>;
+  private readonly autoReconnectHandshake?: () => Promise<SweetLinkHandshakeResponse>;
   private readonly maxReconnectAttempts: number;
   private readonly reconnectBaseDelayMs: number;
   private readonly commandExecutor: CommandExecutor;
@@ -103,7 +108,9 @@ class SweetLinkBrowserClient implements SweetLinkClient {
     }
 
     const expiresAtMs =
-      typeof bootstrap.expiresAtMs === 'number' && Number.isFinite(bootstrap.expiresAtMs) ? bootstrap.expiresAtMs : null;
+      typeof bootstrap.expiresAtMs === 'number' && Number.isFinite(bootstrap.expiresAtMs)
+        ? bootstrap.expiresAtMs
+        : null;
 
     this.currentSession = {
       sessionId: bootstrap.sessionId,
@@ -191,7 +198,11 @@ class SweetLinkBrowserClient implements SweetLinkClient {
       };
 
       const handleOpen = () => {
-        if (!this.currentSession || this.currentSession !== sessionReference || this.currentSession.sessionId !== sessionId) {
+        if (
+          !this.currentSession ||
+          this.currentSession !== sessionReference ||
+          this.currentSession.sessionId !== sessionId
+        ) {
           cleanup();
           socket.close();
           if (!this.currentSession || this.currentSession.sessionId !== sessionId) {
@@ -306,13 +317,14 @@ class SweetLinkBrowserClient implements SweetLinkClient {
       debugWindow.__sweetlinkMetadataEvents ??= [];
       debugWindow.__sweetlinkMetadataEvents.push({ at: Date.now(), payload });
     }
-    let targetSession: ActiveSweetLinkSession | null = null;
+    let targetSession: MutableActiveSweetLinkSession | null = null;
     if (this.currentSession && this.currentSession.sessionId === payload.sessionId) {
       targetSession = this.currentSession;
     } else if (this.windowRef) {
-      const windowSession = (this.windowRef as Window & { __sweetlink__?: ActiveSweetLinkSession | null }).__sweetlink__ ?? null;
+      const windowSession =
+        (this.windowRef as Window & { __sweetlink__?: ActiveSweetLinkSession | null }).__sweetlink__ ?? null;
       if (windowSession && windowSession.sessionId === payload.sessionId) {
-        targetSession = windowSession;
+        targetSession = windowSession as MutableActiveSweetLinkSession;
       }
     }
     if (targetSession) {

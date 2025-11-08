@@ -658,12 +658,12 @@ async function attemptSqliteRebuild(): Promise<boolean> {
   attemptedSqliteRebuild = true;
   const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const args = ['rebuild', 'chrome-cookies-secure', 'sqlite3', 'keytar', '--workspace-root'];
+  const childEnv = cloneProcessEnv();
   const pythonBinary = childEnv.PYTHON ?? '/usr/bin/python3';
   const rebuildCommand = `${pnpmCommand} ${args.join(' ')}`;
   console.warn('[SweetLink] Attempting to rebuild sqlite3 bindings automatically…');
   console.warn(`[SweetLink] Running: npm_config_build_from_source=1 PYTHON=${pythonBinary} ${rebuildCommand}`);
   return new Promise((resolve) => {
-    const childEnv = cloneProcessEnv();
     childEnv.npm_config_build_from_source = '1';
     childEnv.PYTHON = childEnv.PYTHON ?? '/usr/bin/python3';
     const child = spawn(pnpmCommand, args, {

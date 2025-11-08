@@ -3,8 +3,8 @@ export { createSessionStorageAdapter, isStoredSessionFresh } from './storage/ses
 export type {
   SweetLinkClient,
   SweetLinkClientOptions,
-  SweetLinkSessionBootstrap,
   SweetLinkHandshakeResponse,
+  SweetLinkSessionBootstrap,
   SweetLinkStatusSnapshot,
   SweetLinkStoredSession,
 } from './types';

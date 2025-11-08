@@ -199,7 +199,11 @@ describe('attemptTwitterOauthAutoAccept', () => {
     });
 
     expect(result).toEqual({ handled: false, reason: 'oauth-handler-not-found' });
-    expect(warnSpy.mock.calls.some(([message]) => typeof message === 'string' && message.includes('does not export an authorize'))).toBe(true);
+    expect(
+      warnSpy.mock.calls.some(
+        ([message]) => typeof message === 'string' && message.includes('does not export an authorize')
+      )
+    ).toBe(true);
     warnSpy.mockRestore();
   });
 

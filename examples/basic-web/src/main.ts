@@ -1,5 +1,10 @@
-type ConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
-type AsyncFunctionConstructor = new (...args: string[]) => (...fnArgs: unknown[]) => Promise<unknown>;
+import {
+  createSessionStorageAdapter,
+  createSweetLinkClient,
+  type SweetLinkHandshakeResponse,
+  type SweetLinkSessionBootstrap,
+  type SweetLinkStatusSnapshot,
+} from 'sweetlink/runtime/browser';
 
 interface DemoApi {
   updateKpi(value: number): number | null;
@@ -17,8 +22,6 @@ declare global {
   }
 }
 
-const HEARTBEAT_INTERVAL_MS = 15_000;
-
 const statusLog = document.querySelector<HTMLPreElement>('#status-log');
 const enableButton = document.querySelector<HTMLButtonElement>('#enable-btn');
 const kpiValue = document.querySelector<HTMLElement>('#kpi-value');
@@ -33,11 +36,32 @@ const sessionChip = document.querySelector<HTMLElement>('#session-chip');
 const sessionPrefix = document.querySelector<HTMLElement>('#session-prefix');
 const sessionNameDisplay = document.querySelector<HTMLElement>('#session-name');
 
-let socket: WebSocket | null = null;
-let sessionId: string | null = null;
-let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
-const pendingConsoleEvents: SweetLinkConsoleEvent[] = [];
 const copyResetTimers = new WeakMap<HTMLButtonElement, number>();
+const sessionStorageAdapter = createSessionStorageAdapter();
+
+const sweetLinkLogger = {
+  info(message: string, ...details: unknown[]) {
+    console.info('[SweetLink]', message, ...details);
+    appendStatus(`[info] ${message}`);
+  },
+  warn(message: string, ...details: unknown[]) {
+    console.warn('[SweetLink]', message, ...details);
+    appendStatus(`[warn] ${message}`);
+  },
+  error(message: string, error: unknown) {
+    console.error('[SweetLink]', message, error);
+    appendStatus(`[error] ${message}${error instanceof Error ? ` – ${error.message}` : ''}`);
+  },
+};
+
+const sweetLinkClient = createSweetLinkClient({
+  storage: sessionStorageAdapter,
+  status: {
+    onStatusSnapshot: handleStatusSnapshot,
+  },
+  logger: sweetLinkLogger,
+  autoReconnectHandshake: requestHandshake,
+});
 
 type TlsState = 'checking' | 'trusted' | 'untrusted' | 'unreachable';
 
@@ -120,73 +144,6 @@ async function checkTlsStatus(options: { force?: boolean } = {}) {
     tlsStatusInFlight = null;
   }
 }
-
-interface SweetLinkConsoleEvent {
-  id: string;
-  timestamp: number;
-  level: ConsoleLevel;
-  args: unknown[];
-}
-
-interface SweetLinkHandshakeResponse {
-  sessionId: string;
-  sessionToken: string;
-  socketUrl: string;
-  expiresAt: number;
-}
-
-interface SweetLinkRunScriptCommand {
-  type: 'runScript';
-  id: string;
-  code: string;
-}
-
-interface SweetLinkNavigateCommand {
-  type: 'navigate';
-  id: string;
-  target: string;
-}
-
-type SweetLinkCommand = SweetLinkRunScriptCommand | SweetLinkNavigateCommand | Record<string, unknown>;
-
-interface SweetLinkServerCommandMessage {
-  kind: 'command';
-  sessionId: string;
-  command: SweetLinkCommand;
-}
-
-interface SweetLinkServerMetadataMessage {
-  kind: 'metadata';
-  codename: string;
-}
-
-interface SweetLinkServerDisconnectMessage {
-  kind: 'disconnect';
-  reason?: string;
-}
-
-type SweetLinkServerMessage =
-  | SweetLinkServerCommandMessage
-  | SweetLinkServerMetadataMessage
-  | SweetLinkServerDisconnectMessage
-  | Record<string, unknown>;
-
-interface SweetLinkCommandResultSuccess {
-  ok: true;
-  commandId: string;
-  durationMs: number;
-  data?: unknown;
-}
-
-interface SweetLinkCommandResultError {
-  ok: false;
-  commandId: string;
-  durationMs: number;
-  error: string;
-  stack?: string;
-}
-
-type SweetLinkCommandResult = SweetLinkCommandResultSuccess | SweetLinkCommandResultError;
 
 function appendStatus(line: string) {
   if (!statusLog) return;
@@ -330,49 +287,6 @@ function setSessionIndicator(state: 'inactive' | 'pending' | 'active', label?: s
   sessionNameDisplay.textContent = label ?? '—';
 }
 
-function recordConsoleEvent(level: ConsoleLevel, args: unknown[]) {
-  const event: SweetLinkConsoleEvent = {
-    id: crypto.randomUUID(),
-    timestamp: Date.now(),
-    level,
-    args,
-  };
-  if (socket?.readyState === WebSocket.OPEN && sessionId) {
-    flushConsoleEvents([event]);
-  } else {
-    pendingConsoleEvents.push(event);
-  }
-}
-
-function flushConsoleEvents(events: SweetLinkConsoleEvent[]) {
-  if (!socket || socket.readyState !== WebSocket.OPEN || !sessionId || events.length === 0) {
-    return;
-  }
-  socket.send(
-    JSON.stringify({
-      kind: 'console',
-      sessionId,
-      events,
-    })
-  );
-}
-
-function installConsoleForwarder() {
-  const levels: ConsoleLevel[] = ['log', 'info', 'warn', 'error', 'debug'];
-  for (const level of levels) {
-    // biome-ignore lint/suspicious/noConsole: instrumentation for demo telemetry
-    const original = console[level].bind(console);
-    console[level] = (...args: unknown[]) => {
-      original(...args);
-      try {
-        recordConsoleEvent(level, args);
-      } catch {
-        // ignore instrumentation issues
-      }
-    };
-  }
-}
-
 const demoApi: DemoApi = {
   updateKpi(value) {
     if (!kpiValue) return null;
@@ -424,183 +338,51 @@ async function requestHandshake(): Promise<SweetLinkHandshakeResponse> {
   return (await response.json()) as SweetLinkHandshakeResponse;
 }
 
-function startHeartbeat() {
-  if (!sessionId || !socket) {
-    return;
-  }
-  stopHeartbeat();
-  heartbeatHandle = globalThis.setInterval(() => {
-    if (socket?.readyState === WebSocket.OPEN && sessionId) {
-      socket.send(JSON.stringify({ kind: 'heartbeat', sessionId }));
-    }
-  }, HEARTBEAT_INTERVAL_MS * 0.8);
+function normalizeHandshakePayload(handshake: SweetLinkHandshakeResponse): SweetLinkSessionBootstrap {
+  return {
+    sessionId: handshake.sessionId,
+    sessionToken: handshake.sessionToken,
+    socketUrl: handshake.socketUrl,
+    expiresAtMs: normalizeExpiresAtMs(handshake.expiresAt),
+    codename: null,
+  };
 }
 
-function stopHeartbeat() {
-  if (heartbeatHandle !== null) {
-    clearInterval(heartbeatHandle);
-    heartbeatHandle = null;
+function normalizeExpiresAtMs(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
   }
+  return value > 10_000_000_000 ? value : value * 1000;
 }
 
-function sendCommandResult(result: SweetLinkCommandResult) {
-  if (!socket || socket.readyState !== WebSocket.OPEN || !sessionId) {
-    return;
-  }
-  socket.send(
-    JSON.stringify({
-      kind: 'commandResult',
-      sessionId,
-      result,
-    })
-  );
-}
-
-async function executeRunScript(command: SweetLinkRunScriptCommand) {
-  if (typeof command.code !== 'string') {
-    throw new TypeError('SweetLink runScript command is missing code.');
-  }
-  const AsyncFunction = (async () => {}).constructor as AsyncFunctionConstructor;
-  const fn = new AsyncFunction('demo', `"use strict"; return (${command.code});`);
-  return await fn.call(globalThis, demoApi);
-}
-
-async function handleCommandMessage(message: SweetLinkServerCommandMessage) {
-  const { command } = message;
-  if (!command || typeof command !== 'object') {
-    return;
-  }
-
-  const start = performance.now();
-  try {
-    switch (command.type) {
-      case 'runScript': {
-        const result = await executeRunScript(command as SweetLinkRunScriptCommand);
-        sendCommandResult({
-          ok: true,
-          commandId: command.id,
-          durationMs: Math.round(performance.now() - start),
-          data: result,
-        });
-        return;
-      }
-      case 'navigate': {
-        const navigateCommand = command as SweetLinkNavigateCommand;
-        if (typeof navigateCommand.target !== 'string' || navigateCommand.target.length === 0) {
-          throw new TypeError('Missing navigate target');
-        }
-        globalThis.location.assign(navigateCommand.target);
-        sendCommandResult({
-          ok: true,
-          commandId: navigateCommand.id,
-          durationMs: Math.round(performance.now() - start),
-          data: globalThis.location.href,
-        });
-        return;
-      }
-      default: {
-        throw new Error(
-          `Command "${String((command as { type?: unknown }).type)}" is not implemented in the demo client.`
-        );
-      }
-    }
-  } catch (error) {
-    const messageText = error instanceof Error ? error.message : String(error);
-    sendCommandResult({
-      ok: false,
-      commandId: (command as { id: string }).id,
-      durationMs: Math.round(performance.now() - start),
-      error: messageText,
-      stack: error instanceof Error && error.stack ? error.stack : undefined,
-    });
-  }
-}
-
-function handleServerMessage(event: MessageEvent<string>) {
-  if (!event?.data) {
-    return;
-  }
-  let parsed: SweetLinkServerMessage;
-  try {
-    parsed = JSON.parse(event.data) as SweetLinkServerMessage;
-  } catch (error) {
-    appendStatus(`Received invalid message: ${error instanceof Error ? error.message : String(error)}`);
-    return;
-  }
-
-  switch (parsed.kind) {
-    case 'command': {
-      void handleCommandMessage(parsed as SweetLinkServerCommandMessage);
-      break;
-    }
-    case 'metadata': {
-      const codename = (parsed as SweetLinkServerMetadataMessage).codename;
-      appendStatus(`CLI attached as "${codename}".`);
-      setSessionIndicator('active', codename, 'Connected as');
-      break;
-    }
-    case 'disconnect': {
-      appendStatus(
-        `Daemon requested disconnect: ${(parsed as SweetLinkServerDisconnectMessage).reason ?? 'unknown reason'}`
-      );
-      break;
-    }
-    default: {
-      const parsedKind = (parsed as { kind?: unknown }).kind;
-      const kind = typeof parsedKind === 'string' ? parsedKind : 'unknown';
-      appendStatus(`Received message: ${kind}`);
-      break;
-    }
-  }
-}
-
-async function connectToDaemon(handshake: SweetLinkHandshakeResponse) {
-  return await new Promise<void>((resolve, reject) => {
-    const ws = new WebSocket(handshake.socketUrl);
-    socket = ws;
-    sessionId = handshake.sessionId;
-
-    ws.addEventListener('open', () => {
-      appendStatus('Connected. Registering session with daemon…');
-      const payload = {
-        kind: 'register',
-        token: handshake.sessionToken,
-        sessionId: handshake.sessionId,
-        url: globalThis.location.href,
-        title: document.title,
-        userAgent: navigator.userAgent,
-        topOrigin: globalThis.location.origin,
-      };
-      ws.send(JSON.stringify(payload));
-      flushConsoleEvents(pendingConsoleEvents.splice(0));
-      startHeartbeat();
-      updateTlsStatus('trusted', 'Daemon TLS certificate is trusted.');
-      resolve();
-    });
-
-    ws.addEventListener('message', (event) => handleServerMessage(event as MessageEvent<string>));
-
-    ws.addEventListener('close', (event) => {
-      appendStatus(`Socket closed (${event.code}${event.reason ? `: ${event.reason}` : ''}).`);
-      stopHeartbeat();
+function handleStatusSnapshot(snapshot: SweetLinkStatusSnapshot) {
+  switch (snapshot.status) {
+    case 'idle': {
       setSessionIndicator('inactive');
       setEnableButtonEnabled(true);
-    });
-
-    ws.addEventListener('error', (event) => {
-      const errorText = event instanceof ErrorEvent ? (event.message ?? 'unknown error') : 'unknown error';
-      appendStatus(`WebSocket error: ${errorText}`);
-      stopHeartbeat();
-      setSessionIndicator('inactive');
+      break;
+    }
+    case 'connecting': {
+      const label = snapshot.codename ?? 'Awaiting CLI';
+      setSessionIndicator('pending', label, 'Connecting');
+      setEnableButtonEnabled(false);
+      break;
+    }
+    case 'connected': {
+      const label = snapshot.codename ?? 'SweetLink';
+      setSessionIndicator('active', label, 'Connected as');
+      setEnableButtonEnabled(false);
+      appendStatus(`CLI attached as "${label}".`);
+      break;
+    }
+    case 'error': {
+      const reason = snapshot.reason ?? 'unknown error';
+      appendStatus(`SweetLink reported an error: ${reason}`);
+      setSessionIndicator('inactive', reason, 'Error');
       setEnableButtonEnabled(true);
-      void checkTlsStatus({ force: true });
-      if (event instanceof ErrorEvent && event.error instanceof Error) {
-        reject(event.error);
-        return;
-      }
-      reject(new Error(errorText));
-    });
-  });
+      break;
+    }
+  }
 }
 
 async function enableSweetLink() {
@@ -610,8 +392,9 @@ async function enableSweetLink() {
   try {
     const handshake = await requestHandshake();
     appendStatus(`Handshake granted. Session ${handshake.sessionId}. Connecting to ${handshake.socketUrl}…`);
+    const bootstrap = normalizeHandshakePayload(handshake);
     setSessionIndicator('pending', `Session ${handshake.sessionId.slice(0, 8)}`, 'Awaiting CLI');
-    await connectToDaemon(handshake);
+    await sweetLinkClient.startSession(bootstrap);
     appendStatus('SweetLink session registered. Run "pnpm sweetlink sessions" to inspect.');
     demoApi.randomizeChart();
   } catch (error) {
@@ -623,7 +406,6 @@ async function enableSweetLink() {
   }
 }
 
-installConsoleForwarder();
 setupCopyButtons();
 for (const button of actionButtons) {
   button.addEventListener('click', () => {
@@ -643,8 +425,48 @@ tlsRetryButton?.addEventListener('click', () => {
   void checkTlsStatus({ force: true });
 });
 
+async function resumeStoredSession() {
+  const stored = sessionStorageAdapter.load();
+  if (!stored) {
+    return;
+  }
+  const isFresh = typeof sessionStorageAdapter.isFresh === 'function' ? sessionStorageAdapter.isFresh : null;
+  if (isFresh && !isFresh(stored)) {
+    sessionStorageAdapter.clear();
+    return;
+  }
+  appendStatus(`Found stored SweetLink session ${stored.sessionId.slice(0, 8)}. Attempting to resume…`);
+  setSessionIndicator('pending', stored.codename ?? stored.sessionId.slice(0, 8), 'Reconnecting');
+  try {
+    await sweetLinkClient.startSession(stored);
+    appendStatus('Stored SweetLink session resumed.');
+  } catch (error) {
+    sessionStorageAdapter.clear();
+    appendStatus(`Failed to resume stored session: ${describeError(error)}`);
+    setSessionIndicator('inactive');
+    setEnableButtonEnabled(true);
+  }
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 // eslint-disable-next-line unicorn/prefer-top-level-await
-void checkTlsStatus();
+void (async () => {
+  await checkTlsStatus();
+  await resumeStoredSession();
+})();
 
 setSessionIndicator('inactive');
 

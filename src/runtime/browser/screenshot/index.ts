@@ -1,12 +1,18 @@
-import type { SweetLinkScreenshotCommand, SweetLinkScreenshotRenderer, SweetLinkScreenshotResultData } from '@sweetlink/shared';
+import type { SweetLinkScreenshotCommand, SweetLinkScreenshotResultData } from '@sweetlink/shared';
+import type { ScreenshotTargetInfo, SweetLinkScreenshotHooks } from '../types';
 import { getBrowserWindow } from '../utils/environment';
-import type { SweetLinkScreenshotHooks, ScreenshotTargetInfo } from '../types';
-import { loadDomToImage, normalizeOklchColors, recordScreenshotError } from './utils';
-import { applyScreenshotPreHooks } from './hooks';
-import { captureWithHtml2Canvas } from './renderers/html2canvas';
-import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image';
-import { resolveScreenshotTarget } from './targets';
 import { clamp } from '../utils/number';
+import { applyScreenshotPreHooks } from './hooks';
+import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image';
+import { captureWithHtml2Canvas } from './renderers/html2canvas';
+import { resolveScreenshotTarget } from './targets';
+import { loadDomToImage, recordScreenshotError } from './utils';
+
+type DomToImageModule = Awaited<ReturnType<typeof loadDomToImage>>;
+type ScreenshotLibsCache = {
+  html2canvas?: () => Promise<typeof import('html2canvas')['default']>;
+  domToImage?: () => Promise<DomToImageModule>;
+};
 
 export function createScreenshotHooks(): SweetLinkScreenshotHooks & {
   readonly testHelpers: {
@@ -30,25 +36,21 @@ export function createScreenshotHooks(): SweetLinkScreenshotHooks & {
           loadDomToImage()
             .then((domToImageModule) => {
               const debugWindow = browserWindow as Window & {
-                __sweetlinkScreenshotLibs?: {
-                  html2canvas?: () => Promise<typeof import('html2canvas')['default']>;
-                  domToImage?: () => Promise<ReturnType<typeof loadDomToImage>>;
-                };
+                __sweetlinkScreenshotLibs?: ScreenshotLibsCache;
               };
               debugWindow.__sweetlinkScreenshotLibs ??= {};
               if (!debugWindow.__sweetlinkScreenshotLibs.domToImage) {
                 debugWindow.__sweetlinkScreenshotLibs.domToImage = () => Promise.resolve(domToImageModule);
               }
+              return domToImageModule;
             })
             .catch((error: unknown) => {
               recordScreenshotError('domToImage', error);
+              return undefined;
             }),
         ]);
         const debugWindow = browserWindow as Window & {
-          __sweetlinkScreenshotLibs?: {
-            html2canvas?: () => Promise<typeof import('html2canvas')['default']>;
-            domToImage?: () => Promise<ReturnType<typeof loadDomToImage>>;
-          };
+          __sweetlinkScreenshotLibs?: ScreenshotLibsCache;
         };
         debugWindow.__sweetlinkScreenshotLibs ??= {};
         if (!debugWindow.__sweetlinkScreenshotLibs.html2canvas) {

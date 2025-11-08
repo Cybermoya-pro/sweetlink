@@ -155,7 +155,9 @@ describe('session fetch helpers', () => {
 
   it('finds session summaries by id when a token is provided', async () => {
     fetchJsonMock.mockResolvedValueOnce({
-      sessions: [{ sessionId: 'session-6', codename: 'Gamma', url: '', title: '', topOrigin: '', createdAt: 0, lastSeenAt: 0 }],
+      sessions: [
+        { sessionId: 'session-6', codename: 'Gamma', url: '', title: '', topOrigin: '', createdAt: 0, lastSeenAt: 0 },
+      ],
     });
 
     const match = await getSessionSummaryById(config, 'existing-token', 'session-6');

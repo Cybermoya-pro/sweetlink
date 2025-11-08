@@ -145,20 +145,18 @@ describe('smoke progress persistence', () => {
   });
 
   it('saves and clears smoke progress entries', async () => {
-    readFileMock
-      .mockResolvedValueOnce(JSON.stringify({ entries: [] }))
-      .mockResolvedValueOnce(
-        JSON.stringify({
-          entries: [
-            {
-              baseOrigin: 'https://app.example.dev',
-              routesSignature: JSON.stringify(['dash']),
-              nextIndex: 2,
-              updatedAt: 10,
-            },
-          ],
-        })
-      );
+    readFileMock.mockResolvedValueOnce(JSON.stringify({ entries: [] })).mockResolvedValueOnce(
+      JSON.stringify({
+        entries: [
+          {
+            baseOrigin: 'https://app.example.dev',
+            routesSignature: JSON.stringify(['dash']),
+            nextIndex: 2,
+            updatedAt: 10,
+          },
+        ],
+      })
+    );
     vi.spyOn(Date, 'now').mockReturnValue(5_000);
 
     await saveSmokeProgressIndex('https://app.example.dev', ['dash'], 4);

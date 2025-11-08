@@ -2,12 +2,16 @@ import type { SweetLinkScreenshotResultData } from '@sweetlink/shared';
 import { loadDomToImage, recordScreenshotError } from '../utils';
 
 export async function captureWithDomToImage(
-  targetInfo: { base: HTMLElement; target: HTMLElement; clip?: { x: number; y: number; width: number; height: number } },
+  targetInfo: {
+    base: HTMLElement;
+    target: HTMLElement;
+    clip?: { x: number; y: number; width: number; height: number };
+  },
   quality: number
 ): Promise<SweetLinkScreenshotResultData> {
   const domToImage = await loadDomToImage();
   if (typeof domToImage.toJpeg !== 'function') {
-    throw new Error('dom-to-image-more failed to expose toJpeg');
+    throw new TypeError('dom-to-image-more failed to expose toJpeg');
   }
   let dataUrl: string;
   try {

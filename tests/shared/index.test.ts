@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createSweetLinkCommandId,
   createSweetLinkSessionId,
-  signSweetLinkToken,
   SWEETLINK_CLI_EXP_SECONDS,
   SWEETLINK_SESSION_EXP_SECONDS,
+  signSweetLinkToken,
   verifySweetLinkToken,
 } from '../../shared/src/index';
 
@@ -59,9 +59,7 @@ describe('SweetLink token helpers', () => {
     ).toThrow(/scope mismatch/);
 
     // Expired token check.
-    vi.spyOn(Date, 'now').mockReturnValue(
-      1_700_000_000_000 + (SWEETLINK_SESSION_EXP_SECONDS + 30) * 1_000
-    );
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000 + (SWEETLINK_SESSION_EXP_SECONDS + 30) * 1_000);
     expect(() =>
       verifySweetLinkToken({
         secret: 'another-secret-value-0987654321',

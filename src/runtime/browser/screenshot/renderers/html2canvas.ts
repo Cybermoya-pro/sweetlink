@@ -1,6 +1,6 @@
 import type { SweetLinkScreenshotResultData } from '@sweetlink/shared';
-import { commandSelectorSummary, HTML2CANVAS_TARGET_ATTR } from '../targets';
 import { getBrowserWindow } from '../../utils/environment';
+import { commandSelectorSummary, HTML2CANVAS_TARGET_ATTR } from '../targets';
 import { normalizeOklchColors, patchHtml2canvasColorParser, recordScreenshotError } from '../utils';
 
 let html2canvasModulePromise: Promise<typeof import('html2canvas')> | null = null;
@@ -15,7 +15,11 @@ async function loadHtml2Canvas(): Promise<typeof import('html2canvas')['default'
 }
 
 export async function captureWithHtml2Canvas(
-  targetInfo: { base: HTMLElement; target: HTMLElement; clip?: { x: number; y: number; width: number; height: number } },
+  targetInfo: {
+    base: HTMLElement;
+    target: HTMLElement;
+    clip?: { x: number; y: number; width: number; height: number };
+  },
   quality: number
 ): Promise<SweetLinkScreenshotResultData> {
   const browserWindow = getBrowserWindow();

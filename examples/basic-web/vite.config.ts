@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import https from 'node:https';
+import path from 'node:path';
 import { defineConfig, type PluginOption } from 'vite';
 import { issueSweetLinkHandshake, resolveDaemonUrl } from './server/handshake.js';
 
@@ -134,6 +135,14 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
+  },
+  resolve: {
+    alias: [
+      {
+        find: 'sweetlink/runtime/browser',
+        replacement: path.resolve(__dirname, '../../src/runtime/browser/index.ts'),
+      },
+    ],
   },
   plugins: [sweetLinkHandshakePlugin()],
 });

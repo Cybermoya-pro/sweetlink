@@ -9,12 +9,14 @@ import type {
   SweetLinkSelectorDiscoveryCommand,
 } from '@sweetlink/shared';
 import { loadDefaultExportFromUrl } from '../module-loader';
-import { sanitizeResult } from '../utils/sanitize';
-import type { SweetLinkScreenshotHooks } from '../types';
 import { discoverSelectorCandidates } from '../selector-discovery';
-import { toError } from '../utils/errors';
-import { getBrowserWindow } from '../utils/environment';
+import type { SweetLinkScreenshotHooks } from '../types';
 import { CONSOLE_LEVELS, getConsoleMethod, setConsoleMethod } from '../utils/console';
+import { getBrowserWindow } from '../utils/environment';
+import { toError } from '../utils/errors';
+import { sanitizeResult } from '../utils/sanitize';
+
+type ConsoleLevel = (typeof CONSOLE_LEVELS)[number];
 
 export interface CommandExecutor {
   execute(command: SweetLinkCommand): Promise<SweetLinkCommandResult>;
@@ -41,19 +43,19 @@ async function executeCommand(
         return runScriptCommand(command, started);
       }
       case 'getDom': {
-        return Promise.resolve(runGetDomCommand(command, started));
+        return runGetDomCommand(command, started);
       }
       case 'navigate': {
-        return Promise.resolve(runNavigateCommand(command, started));
+        return runNavigateCommand(command, started);
       }
       case 'ping': {
-        return Promise.resolve(runPingCommand(command, started));
+        return runPingCommand(command, started);
       }
       case 'screenshot': {
         return runScreenshotCommand(command, started, context);
       }
       case 'discoverSelectors': {
-        return Promise.resolve(runSelectorDiscoveryCommand(command, started));
+        return runSelectorDiscoveryCommand(command, started);
       }
       default: {
         throw new Error(`Unsupported command type ${(command as { type?: unknown }).type}`);
@@ -69,7 +71,7 @@ async function executeCommand(
       error: error_.message,
       stack: error_.stack,
     };
-    return Promise.resolve(result);
+    return result;
   }
 }
 
@@ -239,16 +241,16 @@ function interceptConsole(buffer: SweetLinkConsoleEvent[]) {
       continue;
     }
     original.set(level, originalFunction);
-    const replacement: Console[(typeof consoleLevels)[number]] = ((...arguments_: unknown[]) => {
+    const replacement: Console[ConsoleLevel] = ((...arguments_: unknown[]) => {
       buffer.push({
         id: `${level}-${Date.now().toString()}-${Math.random().toString(16).slice(2)}`,
         timestamp: Date.now(),
         level,
         args: arguments_.map((argument) => sanitizeResult(argument)),
       });
-      const typedArguments = arguments_ as Parameters<Console[(typeof consoleLevels)[number]]>;
+      const typedArguments = arguments_ as Parameters<Console[ConsoleLevel]>;
       originalFunction.apply(console, typedArguments);
-    }) as Console[(typeof consoleLevels)[number]];
+    }) as Console[ConsoleLevel];
     setConsoleMethod(consoleWithLevels, level, replacement);
   }
 

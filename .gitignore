@@ -7,3 +7,4 @@ tmp
 pnpm-debug.log
 dist/**/*.map
 coverage
+.cache

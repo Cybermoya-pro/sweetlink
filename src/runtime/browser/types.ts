@@ -1,11 +1,7 @@
 import type {
+  SweetLinkConsoleEvent as SharedSweetLinkConsoleEvent,
   SweetLinkCommand,
-  SweetLinkCommandResult,
-  SweetLinkConsoleEvent,
-  SweetLinkScreenshotRenderer,
   SweetLinkScreenshotResultData,
-  SweetLinkServerCommandMessage,
-  SweetLinkServerMessage,
 } from '@sweetlink/shared';
 
 export type SweetLinkClientStatus = 'idle' | 'connecting' | 'connected' | 'error';
@@ -85,7 +81,7 @@ export interface SweetLinkClientOptions extends SweetLinkBrowserEnvironment {
   readonly status?: SweetLinkStatusAdapter;
   readonly logger?: SweetLinkLogger;
   readonly screenshot?: SweetLinkScreenshotHooks;
-  readonly onConsoleEvents?: (events: SweetLinkConsoleEvent[]) => void;
+  readonly onConsoleEvents?: (events: SharedSweetLinkConsoleEvent[]) => void;
   readonly autoReconnectHandshake?: () => Promise<SweetLinkHandshakeResponse>;
   readonly maxReconnectAttempts?: number;
   readonly reconnectBaseDelayMs?: number;
@@ -97,12 +93,12 @@ export interface SweetLinkClient {
   getCurrentSession(): ActiveSweetLinkSession | null;
 }
 
-export interface ActiveSweetLinkSession extends SweetLinkSessionBootstrap {
-  readonly socket: WebSocket | null;
-  readonly heartbeatTimer: number | null;
-  readonly consoleBuffer: SweetLinkConsoleEvent[];
-  readonly codename: string | null;
-}
+export type ActiveSweetLinkSession = Omit<SweetLinkSessionBootstrap, 'codename'> & {
+  socket: WebSocket | null;
+  heartbeatTimer: number | null;
+  consoleBuffer: SharedSweetLinkConsoleEvent[];
+  codename: string | null;
+};
 
 export interface ScreenshotTargetInfo {
   readonly base: HTMLElement;
@@ -114,8 +110,8 @@ export type {
   SweetLinkCommand,
   SweetLinkCommandResult,
   SweetLinkConsoleEvent,
-  SweetLinkServerCommandMessage,
-  SweetLinkServerMessage,
   SweetLinkScreenshotRenderer,
   SweetLinkScreenshotResultData,
-};
+  SweetLinkServerCommandMessage,
+  SweetLinkServerMessage,
+} from '@sweetlink/shared';

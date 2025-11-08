@@ -1,9 +1,9 @@
 import type { SweetLinkScreenshotCommand } from '@sweetlink/shared';
 import { loadDefaultExportFromUrl } from '../module-loader';
-import { getBrowserWindow } from '../utils/environment';
-import { toTrimmedNonEmptyString, isRecord } from '../utils/object';
 import type { ScreenshotTargetInfo } from '../types';
+import { getBrowserWindow } from '../utils/environment';
 import { clamp } from '../utils/number';
+import { isRecord, toTrimmedNonEmptyString } from '../utils/object';
 
 type HookRunner = (clientWindow: Window, document_: Document, target: HTMLElement) => Promise<void> | void;
 
@@ -92,9 +92,11 @@ export const createHookRunner = (source: string): HookRunner => {
   };
 };
 
-const isPromiseLike = (value: unknown): value is Promise<unknown> => {
-  const record = isRecord<{ then?: unknown }>(value);
-  return Boolean(record && typeof record.then === 'function');
+const isPromiseLike = (value: unknown): value is PromiseLike<unknown> => {
+  if (!isRecord<{ then?: unknown }>(value)) {
+    return false;
+  }
+  return typeof value.then === 'function';
 };
 
 export async function applyScreenshotPreHooks(
@@ -143,6 +145,7 @@ export async function applyScreenshotPreHooks(
       }
       default: {
         /* ignore unsupported hook */
+        return;
       }
     }
   };

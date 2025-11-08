@@ -220,9 +220,7 @@ describe('evaluateInDevToolsTab', () => {
     fetchMock.mockReset();
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => [
-        { id: '1', url: 'https://app.example.dev', webSocketDebuggerUrl: 'ws://devtools' },
-      ],
+      json: async () => [{ id: '1', url: 'https://app.example.dev', webSocketDebuggerUrl: 'ws://devtools' }],
     });
 
     const result = await evaluateInDevToolsTab('http://localhost:9222', 'https://app.example.dev', '40 + 2');
@@ -238,8 +236,8 @@ describe('evaluateInDevToolsTab', () => {
       json: async () => [{ id: '1', url: 'https://other.dev', webSocketDebuggerUrl: undefined }],
     });
 
-    await expect(
-      evaluateInDevToolsTab('http://localhost:9222', 'https://missing.dev', '1+1')
-    ).rejects.toThrow(/does not expose/);
+    await expect(evaluateInDevToolsTab('http://localhost:9222', 'https://missing.dev', '1+1')).rejects.toThrow(
+      /does not expose/
+    );
   });
 });

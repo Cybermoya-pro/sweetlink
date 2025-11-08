@@ -92,8 +92,16 @@ describe('collectChromeCookies', () => {
     expect(names).toContain('__Secure-session');
     expect(names).toContain('auth-token');
     expect(names).not.toContain('_vercel_session');
-    expect(getCookiesPromisedMock).toHaveBeenCalledWith('https://localhost:4455/', 'puppeteer', cliEnvMock.chromeProfilePath);
-    expect(getCookiesPromisedMock).toHaveBeenCalledWith('https://example-auth.dev/', 'puppeteer', cliEnvMock.chromeProfilePath);
+    expect(getCookiesPromisedMock).toHaveBeenCalledWith(
+      'https://localhost:4455/',
+      'puppeteer',
+      cliEnvMock.chromeProfilePath
+    );
+    expect(getCookiesPromisedMock).toHaveBeenCalledWith(
+      'https://example-auth.dev/',
+      'puppeteer',
+      cliEnvMock.chromeProfilePath
+    );
   });
 
   it('normalizes secure cookies when targeting http origins', async () => {

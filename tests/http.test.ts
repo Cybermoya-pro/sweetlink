@@ -28,9 +28,7 @@ describe('fetchJson', () => {
       json: async () => ({ error: 'Missing' }),
     });
 
-    await expect(fetchJson('https://api.example.dev/missing')).rejects.toThrow(
-      'Request failed: {"error":"Missing"}'
-    );
+    await expect(fetchJson('https://api.example.dev/missing')).rejects.toThrow('Request failed: {"error":"Missing"}');
   });
 
   it('appends diagnostic hints when fetch rejects with session errors', async () => {

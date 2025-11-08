@@ -218,9 +218,7 @@ describe('fetchDevToolsTabs', () => {
   it('throws when the DevTools endpoint responds with an error', async () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Error' });
 
-    await expect(fetchDevToolsTabs('http://127.0.0.1:9222')).rejects.toThrow(
-      'DevTools endpoint responded with 500'
-    );
+    await expect(fetchDevToolsTabs('http://127.0.0.1:9222')).rejects.toThrow('DevTools endpoint responded with 500');
   });
 
   it('throws when the payload is not an array', async () => {

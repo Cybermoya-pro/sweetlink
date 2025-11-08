@@ -16,8 +16,7 @@ pnpm --filter @sweetlink/example-basic-web dev
 The Vite dev server reloads automatically whenever you edit `src/main.ts` or `index.html`. Open `http://localhost:4000` and click **Enable SweetLink**. The page will:
 
 1. POST to `/api/sweetlink/handshake` to request a session token.
-2. Connect to the local `wss://localhost:4455/bridge` endpoint.
-3. Register the session and forward console + runScript commands.
+2. Pass the payload to `createSweetLinkClient` from `sweetlink/runtime/browser`, which connects to the local daemon, patches the console, and keeps the session alive automatically.
 
 With the session active, try `pnpm sweetlink sessions` or `pnpm sweetlink console demo` in another terminal to interact with the page.
 
@@ -46,8 +45,8 @@ This compiles the Express server (under `dist/server`) and serves the Vite outpu
 
 This example intentionally keeps things simple:
 
-- Secrets are generated locally via `resolveSweetLinkSecret({ autoCreate: true })`.
-- Only the `runScript` and `navigate` command types are implemented on the browser client.
-- Console forwarding uses a lightweight wrapper around the built-in `console` methods.
+- Secrets are generated locally via `resolveSweetLinkSecret({ autoCreate: true })`. Point the helper at your own key management flow before deploying.
+- The browser imports `createSweetLinkClient` / `createSessionStorageAdapter` directly from `sweetlink/runtime/browser`, so you can copy that snippet into any framework.
+- The runtime now handles every command SweetLink supports (runScript, navigate, screenshots, selector discovery, console streaming). Your app only needs to implement the handshake endpoint and adopt whatever UI makes sense for operators.
 
-Adapt the handshake route and client logic to match your security and UX requirements before deploying to production.
+Adapt the handshake route and status wiring to match your security and UX requirements before deploying to production.

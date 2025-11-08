@@ -7,18 +7,24 @@ export function getConsoleMethod<Level extends SweetLinkConsoleLevel>(
   level: Level
 ): Console[Level] | undefined {
   switch (level) {
-    case 'log':
+    case 'log': {
       return typeof target.log === 'function' ? (target.log as Console[Level]) : undefined;
-    case 'info':
+    }
+    case 'info': {
       return typeof target.info === 'function' ? (target.info as Console[Level]) : undefined;
-    case 'warn':
+    }
+    case 'warn': {
       return typeof target.warn === 'function' ? (target.warn as Console[Level]) : undefined;
-    case 'error':
+    }
+    case 'error': {
       return typeof target.error === 'function' ? (target.error as Console[Level]) : undefined;
-    case 'debug':
+    }
+    case 'debug': {
       return typeof target.debug === 'function' ? (target.debug as Console[Level]) : undefined;
-    default:
+    }
+    default: {
       return undefined;
+    }
   }
 }
 
@@ -31,20 +37,25 @@ export function setConsoleMethod<Level extends SweetLinkConsoleLevel>(
     return;
   }
   switch (level) {
-    case 'log':
+    case 'log': {
       target.log = function_ as Console['log'];
       return;
-    case 'info':
+    }
+    case 'info': {
       target.info = function_ as Console['info'];
       return;
-    case 'warn':
+    }
+    case 'warn': {
       target.warn = function_ as Console['warn'];
       return;
-    case 'error':
+    }
+    case 'error': {
       target.error = function_ as Console['error'];
       return;
-    case 'debug':
+    }
+    case 'debug': {
       target.debug = function_ as Console['debug'];
       return;
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { SweetLinkStorageAdapter, SweetLinkStoredSession } from '../../types';
+import type { SweetLinkStorageAdapter, SweetLinkStoredSession } from '../types';
 import { getBrowserWindow } from '../utils/environment';
 import { isRecord } from '../utils/object';
 
@@ -118,10 +118,10 @@ export function createSessionStorageAdapter(options: SessionStorageAdapterOption
 
   return {
     load: () => loadStoredSession(windowRef),
-    save: (session) => saveStoredSession(session, windowRef),
+    save: (session: SweetLinkStoredSession) => saveStoredSession(session, windowRef),
     clear: () => clearStoredSession(windowRef),
-    updateCodename: (codename) => updateStoredSessionCodename(codename, windowRef),
-    isFresh: (session, now) => isStoredSessionFresh(session, now),
+    updateCodename: (codename: string | null) => updateStoredSessionCodename(codename, windowRef),
+    isFresh: (session: SweetLinkStoredSession, now?: number) => isStoredSessionFresh(session, now),
   };
 }
 

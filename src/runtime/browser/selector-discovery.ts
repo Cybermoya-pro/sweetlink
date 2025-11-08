@@ -45,13 +45,14 @@ export function discoverSelectorCandidates(options: DiscoveryOptions): SweetLink
       }
 
       const snippet = createTextSnippet(element);
-      const dataTarget = element.dataset.sweetlinkTarget;
-      const dataTestId = element.dataset.testid;
+      const normalizedSnippet = snippet ?? '';
+      const dataTarget = element.dataset.sweetlinkTarget ?? null;
+      const dataTestId = element.dataset.testid ?? null;
       const result: SweetLinkSelectorCandidate = {
         selector,
         hook,
         tagName: element.tagName.toLowerCase(),
-        textSnippet: snippet,
+        textSnippet: normalizedSnippet,
         score: calculateScore(baseScore, snippet, visible),
         visible,
         size: {
@@ -233,7 +234,7 @@ function calculateScore(base: number, snippet: string | null, visible: boolean):
 
 function createTextSnippet(element: HTMLElement): string | null {
   const text = element.innerText ?? element.textContent ?? '';
-  const trimmed = text.trim().replace(/\s+/g, ' ');
+  const trimmed = text.trim().replaceAll(/\s+/g, ' ');
   if (!trimmed) {
     return null;
   }
@@ -260,7 +261,7 @@ function buildDomPath(element: HTMLElement): string {
     const id = current.id ? `#${current.id}` : '';
     const classes =
       current.classList.length > 0
-        ? `.${[...current.classList].map((className) => className.replace(/\s+/g, '-')).join('.')}`
+        ? `.${[...current.classList].map((className) => className.replaceAll(/\s+/g, '-')).join('.')}`
         : '';
     segments.unshift(`${current.tagName.toLowerCase()}${id}${classes}`.trim());
     current = current.parentElement;

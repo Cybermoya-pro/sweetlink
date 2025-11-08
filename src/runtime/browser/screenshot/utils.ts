@@ -1,7 +1,7 @@
 import { regex } from 'arkregex';
 import { compact } from 'es-toolkit';
-import { toError } from '../utils/errors';
 import { loadDomToImageFromScript } from '../dom-to-image-loader';
+import { toError } from '../utils/errors';
 
 type DomToImageModule = { toJpeg: (node: HTMLElement, options?: unknown) => Promise<string> };
 
@@ -333,7 +333,7 @@ function replaceOkColorFunctions(input: string): string | null {
   }
 
   let output = result;
-  const colorMixPattern = regex(String.raw`color-mix\(\s*in\s+okl(?:ab|ch)`, 'gi');
+  const colorMixPattern = regex.as(String.raw`color-mix\(\s*in\s+okl(?:ab|ch)`, 'gi');
   if (colorMixPattern.test(output)) {
     output = output.replaceAll(colorMixPattern, (segment) => segment.replace(/okl(?:ab|ch)/i, 'srgb'));
     changed = true;
