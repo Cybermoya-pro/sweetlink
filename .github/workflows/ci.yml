@@ -12,6 +12,8 @@ jobs:
   quality:
     name: Lint & Test
     runs-on: ubuntu-latest
+    env:
+      SWEETLINK_SECRET: ci-standalone-secret-key-for-tests-only
     steps:
       - name: Checkout
         uses: actions/checkout@v4
