@@ -1,5 +1,5 @@
 import type { SweetLinkScreenshotResultData } from '@sweetlink/shared';
-import { loadDomToImage, recordScreenshotError } from '../utils';
+import { loadDomToImage, recordScreenshotError } from '../utils.js';
 
 export async function captureWithDomToImage(
   targetInfo: {

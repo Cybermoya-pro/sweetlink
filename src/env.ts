@@ -1,5 +1,5 @@
-import type { SweetLinkSharedEnv } from '../shared/src/env';
-import { sweetLinkEnv as sharedSweetLinkEnv } from '../shared/src/env';
+import type { SweetLinkSharedEnv } from '../shared/src/env.js';
+import { sweetLinkEnv as sharedSweetLinkEnv } from '../shared/src/env.js';
 
 export const sweetLinkEnv: SweetLinkSharedEnv = sharedSweetLinkEnv;
 export const sweetLinkDebug = sweetLinkEnv.debug;

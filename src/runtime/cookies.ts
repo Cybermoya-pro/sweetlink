@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { loadSweetLinkFileConfig, type SweetLinkCookieMapping } from '../core/config-file';
-import { cloneProcessEnv } from '../core/env';
-import { cliEnv } from '../env';
-import { describeUnknown } from '../util/errors';
+import { loadSweetLinkFileConfig, type SweetLinkCookieMapping } from '../core/config-file.js';
+import { cloneProcessEnv } from '../core/env.js';
+import { cliEnv } from '../env.js';
+import { describeUnknown } from '../util/errors.js';
 
 export interface ChromeCookiesSecureModule {
   getCookiesPromised(url: string, format: 'object', profilePath?: string): Promise<Record<string, ChromeCookieEntry>>;
@@ -651,7 +651,6 @@ function resolveTldModule(value: unknown): TldModuleWithGetDomain | null {
 }
 
 async function attemptSqliteRebuild(): Promise<boolean> {
-  // biome-ignore lint/nursery/noUnnecessaryConditions: ensure we only rebuild once per process
   if (attemptedSqliteRebuild) {
     return false;
   }

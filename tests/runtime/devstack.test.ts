@@ -146,7 +146,7 @@ describe('ensureDevStackRunning', () => {
   it('treats successful check commands as healthy without hitting fetch', async () => {
     fetchMock.mockReset();
     const child = {
-      once: vi.fn((event: string, handler: (...args: any[]) => void) => {
+      once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
         if (event === 'close') {
           handler(0);
         }

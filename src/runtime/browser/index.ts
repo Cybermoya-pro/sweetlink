@@ -1,5 +1,5 @@
-export { createSweetLinkClient, sweetLinkBrowserTestHelpers } from './client';
-export { createSessionStorageAdapter, isStoredSessionFresh } from './storage/session-storage';
+export { createSweetLinkClient, sweetLinkBrowserTestHelpers } from './client.js';
+export { createSessionStorageAdapter, isStoredSessionFresh } from './storage/session-storage.js';
 export type {
   SweetLinkClient,
   SweetLinkClientOptions,
@@ -7,4 +7,4 @@ export type {
   SweetLinkSessionBootstrap,
   SweetLinkStatusSnapshot,
   SweetLinkStoredSession,
-} from './types';
+} from './types.js';

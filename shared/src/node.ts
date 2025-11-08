@@ -3,7 +3,7 @@ import { constants as fsConstants } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { debuglog } from 'node:util';
-import { sweetLinkEnv } from './env';
+import { sweetLinkEnv } from './env.js';
 
 const DEFAULT_SECRET_PATH = path.join(os.homedir(), '.sweetlink', 'secret.key');
 

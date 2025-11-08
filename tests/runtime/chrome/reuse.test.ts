@@ -42,7 +42,7 @@ vi.mock('puppeteer', () => ({
 const availabilityQueue: boolean[] = [];
 
 const createServer = () => {
-  const listeners: Record<string, Array<(...args: any[]) => void>> = { error: [], listening: [] };
+  const listeners: Record<string, Array<(...args: unknown[]) => void>> = { error: [], listening: [] };
   const server = {
     once(event: 'error' | 'listening', handler: () => void) {
       listeners[event].push(handler);

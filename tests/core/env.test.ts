@@ -22,7 +22,6 @@ describe('readLocalEnvString', () => {
     process.env.TEST_STRING_PRESENT = '  value  ';
     // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise helper behavior.
     process.env.TEST_STRING_EMPTY = '   ';
-    // biome-ignore lint/performance/noDelete: removing env var is required to simulate missing key.
     // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise helper behavior.
     delete process.env.TEST_STRING_MISSING;
 

@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
-import { resolveConfig } from '../core/config';
-import { readCommandOptions } from '../core/env';
-import { type RunJsOptions, renderCommandResult, resolveScript } from '../runtime/scripts';
-import { executeRunScriptCommand, resolveSessionIdFromHint } from '../runtime/session';
+import { resolveConfig } from '../core/config.js';
+import { readCommandOptions } from '../core/env.js';
+import { type RunJsOptions, renderCommandResult, resolveScript } from '../runtime/scripts.js';
+import { executeRunScriptCommand, resolveSessionIdFromHint } from '../runtime/session.js';
 
 /** Registers the `sweetlink run-js` command. */
 export function registerRunJsCommand(program: Command): void {

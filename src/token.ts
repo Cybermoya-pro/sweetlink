@@ -1,9 +1,9 @@
-import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '../shared/src';
-import { resolveSweetLinkSecret, type SweetLinkSecretResolution } from '../shared/src/node';
-import { fetchJson } from './http';
-import type { CachedCliTokenSource, CliConfig } from './types';
-import { describeAppForPrompt } from './util/app-label';
-import { describeUnknown } from './util/errors';
+import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '../shared/src/index.js';
+import { resolveSweetLinkSecret, type SweetLinkSecretResolution } from '../shared/src/node.js';
+import { fetchJson } from './http.js';
+import type { CachedCliTokenSource, CliConfig } from './types.js';
+import { describeAppForPrompt } from './util/app-label.js';
+import { describeUnknown } from './util/errors.js';
 
 interface CachedCliToken {
   readonly token: string;

@@ -8,18 +8,18 @@ import {
   type Page,
 } from 'playwright-core';
 import { WebSocket } from 'undici';
-import { sweetLinkDebug } from '../../env';
-import { describeUnknown, extractEventMessage } from '../../util/errors';
-import { delay } from '../../util/time';
-import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START } from '../chrome/reuse/constants';
-import { urlsRoughlyMatch } from '../url';
+import { sweetLinkDebug } from '../../env.js';
+import { describeUnknown, extractEventMessage } from '../../util/errors.js';
+import { delay } from '../../util/time.js';
+import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START } from '../chrome/reuse/constants.js';
+import { urlsRoughlyMatch } from '../url.js';
 import type {
   DevToolsConfig,
   DevToolsConsoleEntry,
   DevToolsState,
   DevToolsTabEntry,
   SweetLinkBootstrapDiagnostics,
-} from './types';
+} from './types.js';
 
 type DevToolsResponse = { id?: number; result?: unknown; error?: { message?: string } };
 

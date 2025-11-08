@@ -1,6 +1,6 @@
-import type { SweetLinkStorageAdapter, SweetLinkStoredSession } from '../types';
-import { getBrowserWindow } from '../utils/environment';
-import { isRecord } from '../utils/object';
+import type { SweetLinkStorageAdapter, SweetLinkStoredSession } from '../types.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { isRecord } from '../utils/object.js';
 
 const STORAGE_KEY = 'sweetlink:last-session';
 const EXPIRY_SAFETY_MARGIN_MS = 5000;

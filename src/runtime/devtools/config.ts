@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { sweetLinkDebug } from '../../env';
-import { isErrnoException } from '../../util/errors';
-import { DEVTOOLS_CONFIG_PATH, DEVTOOLS_STATE_PATH } from './constants';
-import type { DevToolsConfig, DevToolsState } from './types';
+import { sweetLinkDebug } from '../../env.js';
+import { isErrnoException } from '../../util/errors.js';
+import { DEVTOOLS_CONFIG_PATH, DEVTOOLS_STATE_PATH } from './constants.js';
+import type { DevToolsConfig, DevToolsState } from './types.js';
 
 export async function loadDevToolsConfig(): Promise<DevToolsConfig | null> {
   try {

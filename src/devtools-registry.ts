@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'undici';
-import { sweetLinkDebug } from './env';
+import { sweetLinkDebug } from './env.js';
 
 const DEVTOOLS_REGISTRY_PATH = path.join(os.homedir(), '.sweetlink', 'devtools-registry.json');
 

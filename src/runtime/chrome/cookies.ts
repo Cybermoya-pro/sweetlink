@@ -1,10 +1,10 @@
 import { uniq } from 'es-toolkit';
 import type { Browser as PuppeteerBrowser, Page as PuppeteerPage } from 'puppeteer';
-import { sweetLinkDebug } from '../../env';
-import { delay } from '../../util/time';
-import { buildCookieOrigins, collectChromeCookies, type PuppeteerCookieParam } from '../cookies';
-import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants';
-import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer';
+import { sweetLinkDebug } from '../../env.js';
+import { delay } from '../../util/time.js';
+import { buildCookieOrigins, collectChromeCookies, type PuppeteerCookieParam } from '../cookies.js';
+import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants.js';
+import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer.js';
 
 type PrimeChromeCookiesDeps = {
   collectChromeCookies: typeof collectChromeCookies;

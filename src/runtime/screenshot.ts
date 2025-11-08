@@ -1,12 +1,12 @@
 import { writeFile } from 'node:fs/promises';
-import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../shared/src';
-import { runCodexImagePrompt, runCodexTextPrompt } from '../codex';
-import { fetchJson } from '../http';
-import type { CliConfig } from '../types';
-import { describeAppForPrompt } from '../util/app-label';
-import { extractEventMessage, isErrnoException } from '../util/errors';
-import { formatConsoleArg } from './devtools';
-import type { SweetLinkConsoleDump } from './session';
+import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../shared/src/index.js';
+import { runCodexImagePrompt, runCodexTextPrompt } from '../codex.js';
+import { fetchJson } from '../http.js';
+import type { CliConfig } from '../types.js';
+import { describeAppForPrompt } from '../util/app-label.js';
+import { extractEventMessage, isErrnoException } from '../util/errors.js';
+import { formatConsoleArg } from './devtools.js';
+import type { SweetLinkConsoleDump } from './session.js';
 
 export interface DevToolsCaptureOptions {
   readonly devtoolsUrl: string;

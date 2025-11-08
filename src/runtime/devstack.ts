@@ -5,11 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { compact } from 'es-toolkit';
 import { Agent, setGlobalDispatcher } from 'undici';
-import { cliEnv, sweetLinkDebug } from '../env';
-import type { ServerConfig } from '../types';
-import { extractEventMessage } from '../util/errors';
-import { formatPathForDisplay } from '../util/path';
-import { delay } from '../util/time';
+import { cliEnv, sweetLinkDebug } from '../env.js';
+import type { ServerConfig } from '../types.js';
+import { extractEventMessage } from '../util/errors.js';
+import { formatPathForDisplay } from '../util/path.js';
+import { delay } from '../util/time.js';
 
 /** Registers the mkcert CA with undici so HTTPS requests succeed without NODE_TLS_REJECT_UNAUTHORIZED hacks. */
 export function maybeInstallMkcertDispatcher(): void {

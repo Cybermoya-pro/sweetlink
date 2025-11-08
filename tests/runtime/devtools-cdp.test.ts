@@ -20,12 +20,12 @@ import type { ConsoleMessage, JSHandle, Page } from 'playwright-core';
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
-  private listeners: Record<string, Array<(payload?: any) => void>> = {};
+  private listeners: Record<string, Array<(payload?: unknown) => void>> = {};
   constructor(public url: string) {
     MockWebSocket.instances.push(this);
     queueMicrotask(() => this.emit('open'));
   }
-  addEventListener(type: string, handler: (payload?: any) => void) {
+  addEventListener(type: string, handler: (payload?: unknown) => void) {
     if (!this.listeners[type]) {
       this.listeners[type] = [];
     }
@@ -52,7 +52,7 @@ class MockWebSocket {
   close() {
     queueMicrotask(() => this.emit('close'));
   }
-  private emit(type: string, payload?: any) {
+  private emit(type: string, payload?: unknown) {
     for (const handler of this.listeners[type] ?? []) {
       handler(payload);
     }

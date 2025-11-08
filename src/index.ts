@@ -13,17 +13,17 @@ import {
   type SweetLinkScreenshotHook,
   type SweetLinkScreenshotRenderer,
   type SweetLinkSelectorCandidate,
-} from '../shared/src';
-import { registerClickCommand } from './commands/click';
-import { registerRunJsCommand } from './commands/run-js';
-import { registerTrustCaCommand } from './commands/trust-ca';
-import { readRootProgramOptions, resolveConfig } from './core/config';
-import type { SweetLinkFileConfig } from './core/config-file';
-import { loadSweetLinkFileConfig } from './core/config-file';
-import { readCommandOptions } from './core/env';
-import { cleanupControlledChromeRegistry, registerControlledChromeInstance } from './devtools-registry';
-import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env';
-import { fetchJson } from './http';
+} from '../shared/src/index.js';
+import { registerClickCommand } from './commands/click.js';
+import { registerRunJsCommand } from './commands/run-js.js';
+import { registerTrustCaCommand } from './commands/trust-ca.js';
+import { readRootProgramOptions, resolveConfig } from './core/config.js';
+import type { SweetLinkFileConfig } from './core/config-file.js';
+import { loadSweetLinkFileConfig } from './core/config-file.js';
+import { readCommandOptions } from './core/env.js';
+import { cleanupControlledChromeRegistry, registerControlledChromeInstance } from './devtools-registry.js';
+import { sweetLinkCliTestMode, sweetLinkDebug, sweetLinkEnv } from './env.js';
+import { fetchJson } from './http.js';
 import {
   collectPuppeteerDiagnostics,
   focusControlledChromePage,
@@ -33,19 +33,19 @@ import {
   reuseExistingControlledChrome,
   signalSweetLinkBootstrap,
   waitForSweetLinkSession,
-} from './runtime/chrome';
+} from './runtime/chrome.js';
 import {
   buildCookieOrigins,
   collectChromeCookies,
   collectChromeCookiesForDomains,
   normalizePuppeteerCookie,
   type PuppeteerCookieParam,
-} from './runtime/cookies';
+} from './runtime/cookies.js';
 import {
   ensureDevStackRunning as ensureDevStackRunningRuntime,
   isAppReachable as isAppReachableRuntime,
   maybeInstallMkcertDispatcher,
-} from './runtime/devstack';
+} from './runtime/devstack.js';
 import {
   attemptTwitterOauthAutoAccept,
   collectBootstrapDiagnostics,
@@ -69,16 +69,16 @@ import {
   saveDevToolsState,
   serializeConsoleMessage,
   trimBuffer,
-} from './runtime/devtools';
-import { fetchNextDevtoolsErrors } from './runtime/next-devtools';
+} from './runtime/devtools.js';
+import { fetchNextDevtoolsErrors } from './runtime/next-devtools.js';
 import {
   attemptDevToolsCapture,
   maybeDescribeScreenshot,
   persistScreenshotResult,
   tryDevToolsRecovery,
   tryHtmlToImageFallback,
-} from './runtime/screenshot';
-import { renderCommandResult } from './runtime/scripts';
+} from './runtime/screenshot.js';
+import { renderCommandResult } from './runtime/scripts.js';
 import {
   buildClickScript,
   fetchConsoleEvents,
@@ -91,7 +91,7 @@ import {
   resolveSessionIdFromHint,
   type SweetLinkConsoleDump,
   type SweetLinkSessionSummary,
-} from './runtime/session';
+} from './runtime/session.js';
 import {
   buildSmokeRouteUrl,
   clearSmokeProgress,
@@ -106,13 +106,13 @@ import {
   saveSmokeProgressIndex,
   triggerSweetLinkCliAuto,
   waitForSmokeRouteReady,
-} from './runtime/smoke';
-import { buildWaitCandidateUrls, configurePathRedirects, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url';
-import { buildScreenshotHooks } from './screenshot-hooks';
-import { fetchCliToken } from './token';
-import type { CliConfig, ServerConfig } from './types';
-import { describeAppForPrompt, formatAppLabel } from './util/app-label';
-import { extractEventMessage, isErrnoException, logDebugError } from './util/errors';
+} from './runtime/smoke.js';
+import { buildWaitCandidateUrls, configurePathRedirects, normalizeUrlForMatch, trimTrailingSlash } from './runtime/url.js';
+import { buildScreenshotHooks } from './screenshot-hooks.js';
+import { fetchCliToken } from './token.js';
+import type { CliConfig, ServerConfig } from './types.js';
+import { describeAppForPrompt, formatAppLabel } from './util/app-label.js';
+import { extractEventMessage, isErrnoException, logDebugError } from './util/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1901,7 +1901,7 @@ export const __sweetlinkCliTestHelpers = {
   buildClickScript,
 };
 
-export { diagnosticsContainBlockingIssues, logBootstrapDiagnostics } from './runtime/devtools';
+export { diagnosticsContainBlockingIssues, logBootstrapDiagnostics } from './runtime/devtools.js';
 export {
   buildClickScript,
   fetchConsoleEvents,
@@ -1909,7 +1909,7 @@ export {
   formatSessionHeadline,
   resolvePromptOption,
   resolveSessionIdFromHint,
-} from './runtime/session';
+} from './runtime/session.js';
 
 function urlsRoughlyMatch(a: string, b: string): boolean {
   const urlA = normalizeUrlForMatch(a);

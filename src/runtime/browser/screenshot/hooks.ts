@@ -1,9 +1,9 @@
 import type { SweetLinkScreenshotCommand } from '@sweetlink/shared';
-import { loadDefaultExportFromUrl } from '../module-loader';
-import type { ScreenshotTargetInfo } from '../types';
-import { getBrowserWindow } from '../utils/environment';
-import { clamp } from '../utils/number';
-import { isRecord, toTrimmedNonEmptyString } from '../utils/object';
+import { loadDefaultExportFromUrl } from '../module-loader.js';
+import type { ScreenshotTargetInfo } from '../types.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { clamp } from '../utils/number.js';
+import { isRecord, toTrimmedNonEmptyString } from '../utils/object.js';
 
 type HookRunner = (clientWindow: Window, document_: Document, target: HTMLElement) => Promise<void> | void;
 

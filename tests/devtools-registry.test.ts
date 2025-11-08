@@ -18,7 +18,7 @@ vi.mock('node:os', () => ({
   tmpdir: () => '/tmp',
 }));
 
-type ListenerMap = Record<string, Array<(payload?: any) => void>>;
+type ListenerMap = Record<string, Array<(payload?: unknown) => void>>;
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
   public url: string;
@@ -28,7 +28,7 @@ class MockWebSocket {
     MockWebSocket.instances.push(this);
     queueMicrotask(() => this.emit('open'));
   }
-  addEventListener(type: string, handler: (payload?: any) => void) {
+  addEventListener(type: string, handler: (payload?: unknown) => void) {
     if (!this.listeners[type]) {
       this.listeners[type] = [];
     }
@@ -45,7 +45,7 @@ class MockWebSocket {
   close() {
     queueMicrotask(() => this.emit('close'));
   }
-  emit(type: string, payload?: any) {
+  emit(type: string, payload?: unknown) {
     for (const handler of this.listeners[type] ?? []) {
       handler(payload);
     }

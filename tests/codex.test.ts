@@ -10,7 +10,7 @@ vi.mock('node:child_process', () => ({
 const codexModule = await import('../src/codex');
 const { runCodexImagePrompt, runCodexTextPrompt, analyzeConsoleWithCodex } = codexModule;
 
-type Listener = (...arguments_: any[]) => void;
+type Listener = (...arguments_: unknown[]) => void;
 
 function createChild(): ChildProcess & { stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } } {
   const listeners = new Map<string, Set<Listener>>();

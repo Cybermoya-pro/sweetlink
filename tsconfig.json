@@ -6,7 +6,6 @@
     "declarationMap": true,
     "sourceMap": true,
     "noEmit": false,
-    "allowImportingTsExtensions": false,
     "moduleResolution": "node",
     "paths": {
       "@/*": [

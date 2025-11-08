@@ -8,13 +8,13 @@ import type {
   SweetLinkScreenshotCommand,
   SweetLinkSelectorDiscoveryCommand,
 } from '@sweetlink/shared';
-import { loadDefaultExportFromUrl } from '../module-loader';
-import { discoverSelectorCandidates } from '../selector-discovery';
-import type { SweetLinkScreenshotHooks } from '../types';
-import { CONSOLE_LEVELS, getConsoleMethod, setConsoleMethod } from '../utils/console';
-import { getBrowserWindow } from '../utils/environment';
-import { toError } from '../utils/errors';
-import { sanitizeResult } from '../utils/sanitize';
+import { loadDefaultExportFromUrl } from '../module-loader.js';
+import { discoverSelectorCandidates } from '../selector-discovery.js';
+import type { SweetLinkScreenshotHooks } from '../types.js';
+import { CONSOLE_LEVELS, getConsoleMethod, setConsoleMethod } from '../utils/console.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { toError } from '../utils/errors.js';
+import { sanitizeResult } from '../utils/sanitize.js';
 
 type ConsoleLevel = (typeof CONSOLE_LEVELS)[number];
 

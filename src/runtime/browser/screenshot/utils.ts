@@ -1,7 +1,7 @@
 import { regex } from 'arkregex';
 import { compact } from 'es-toolkit';
-import { loadDomToImageFromScript } from '../dom-to-image-loader';
-import { toError } from '../utils/errors';
+import { loadDomToImageFromScript } from '../dom-to-image-loader.js';
+import { toError } from '../utils/errors.js';
 
 type DomToImageModule = { toJpeg: (node: HTMLElement, options?: unknown) => Promise<string> };
 

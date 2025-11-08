@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '../../shared/src';
-import { createSweetLinkCommandId, type SweetLinkCommandResult } from '../../shared/src';
-import { fetchJson } from '../http';
-import { fetchCliToken } from '../token';
-import type { CliConfig } from '../types';
+import type { SweetLinkSelectorCandidate, SweetLinkSelectorDiscoveryResult } from '../../shared/src/index.js';
+import { createSweetLinkCommandId, type SweetLinkCommandResult } from '../../shared/src/index.js';
+import { fetchJson } from '../http.js';
+import { fetchCliToken } from '../token.js';
+import type { CliConfig } from '../types.js';
 
 export interface SweetLinkSessionSummaryResponse {
   readonly sessions: Array<{

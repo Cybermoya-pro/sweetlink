@@ -1,12 +1,12 @@
 import type { SweetLinkScreenshotCommand, SweetLinkScreenshotResultData } from '@sweetlink/shared';
-import type { ScreenshotTargetInfo, SweetLinkScreenshotHooks } from '../types';
-import { getBrowserWindow } from '../utils/environment';
-import { clamp } from '../utils/number';
-import { applyScreenshotPreHooks } from './hooks';
-import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image';
-import { captureWithHtml2Canvas } from './renderers/html2canvas';
-import { resolveScreenshotTarget } from './targets';
-import { loadDomToImage, recordScreenshotError } from './utils';
+import type { ScreenshotTargetInfo, SweetLinkScreenshotHooks } from '../types.js';
+import { getBrowserWindow } from '../utils/environment.js';
+import { clamp } from '../utils/number.js';
+import { applyScreenshotPreHooks } from './hooks.js';
+import { captureWithDomToImage, stripDataUrlPrefix } from './renderers/dom-to-image.js';
+import { captureWithHtml2Canvas } from './renderers/html2canvas.js';
+import { resolveScreenshotTarget } from './targets.js';
+import { loadDomToImage, recordScreenshotError } from './utils.js';
 
 type DomToImageModule = Awaited<ReturnType<typeof loadDomToImage>>;
 type ScreenshotLibsCache = {
@@ -100,7 +100,7 @@ export function createScreenshotHooks(): SweetLinkScreenshotHooks & {
   };
 }
 
-export { createHookRunner } from './hooks';
+export { createHookRunner } from './hooks.js';
 
 async function tryCaptureWithDomToImage(
   targetInfo: ScreenshotTargetInfo,

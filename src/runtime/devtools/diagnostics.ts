@@ -1,11 +1,11 @@
 import type { Request } from 'playwright-core';
-import { BENIGN_CONSOLE_TYPES, IGNORABLE_DIAGNOSTIC_MESSAGES } from './constants';
+import { BENIGN_CONSOLE_TYPES, IGNORABLE_DIAGNOSTIC_MESSAGES } from './constants.js';
 import type {
   BootstrapDiagnosticError,
   DevToolsConsoleEntry,
   DevToolsNetworkEntry,
   SweetLinkBootstrapDiagnostics,
-} from './types';
+} from './types.js';
 
 type LineCollector = {
   append: (line: string) => void;

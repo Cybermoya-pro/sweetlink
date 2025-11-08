@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CliConfig } from '../../src/types';
+import type { SweetLinkConsoleDump } from '../../src/runtime/session';
 
 const readFileMock = vi.fn();
 const writeFileMock = vi.fn();
@@ -68,6 +70,23 @@ vi.mock('../../src/env', () => ({
 
 const smokeModule = await import('../../src/runtime/smoke');
 
+const createTestConfig = (overrides: Partial<CliConfig> = {}): CliConfig => ({
+  appLabel: 'SweetLink Test',
+  appBaseUrl: 'https://app.example.dev',
+  daemonBaseUrl: 'https://daemon.example.dev',
+  adminApiKey: null,
+  oauthScriptPath: null,
+  servers: {},
+  ...overrides,
+});
+
+const createConsoleEvent = (overrides: Partial<SweetLinkConsoleDump>): SweetLinkConsoleDump => ({
+  id: overrides.id ?? 'event-1',
+  timestamp: overrides.timestamp ?? Date.now(),
+  level: overrides.level ?? 'log',
+  args: overrides.args ?? [],
+});
+
 const {
   SMOKE_ROUTE_PRESETS,
   deriveSmokeRoutes,
@@ -114,7 +133,7 @@ describe('SweetLink session navigation', () => {
     await navigateSweetLinkSession({
       sessionId: 'session-xyz',
       targetUrl: new URL('https://app.example.dev/insights'),
-      config: { appBaseUrl: 'https://app.example.dev' } as any,
+      config: createTestConfig({ appBaseUrl: 'https://app.example.dev' }),
     });
 
     expect(executeRunScriptCommandMock).toHaveBeenCalledWith(
@@ -177,31 +196,27 @@ describe('smoke progress persistence', () => {
 
 describe('console diagnostics helpers', () => {
   it('detects authentication warnings gracefully', () => {
-    const event = { level: 'warn', args: ['401 Authentication required'] } as any;
+    const event = createConsoleEvent({ level: 'warn', args: ['401 Authentication required'] });
     expect(consoleEventIndicatesAuthIssue(event)).toBe(true);
   });
 
   it('flags runtime errors but ignores TRPC metadata logs', () => {
     expect(
-      consoleEventIndicatesRuntimeError({
-        level: 'warn',
-        args: ['[trpc] warning', 'TRPCClientError'],
-      } as any)
+      consoleEventIndicatesRuntimeError(
+        createConsoleEvent({ level: 'warn', args: ['[trpc] warning', 'TRPCClientError'] })
+      )
     ).toBe(false);
     expect(
-      consoleEventIndicatesRuntimeError({
-        level: 'error',
-        args: ['Unhandled rejection occurred'],
-      } as any)
+      consoleEventIndicatesRuntimeError(
+        createConsoleEvent({ level: 'error', args: ['Unhandled rejection occurred'] })
+      )
     ).toBe(true);
   });
 
   it('formats console entries with ISO timestamps', () => {
-    const summary = formatConsoleEventSummary({
-      level: 'log',
-      timestamp: Date.UTC(2024, 0, 1),
-      args: ['hello', 'world'],
-    } as any);
+    const summary = formatConsoleEventSummary(
+      createConsoleEvent({ level: 'log', timestamp: Date.UTC(2024, 0, 1), args: ['hello', 'world'] })
+    );
     expect(summary).toBe('[2024-01-01T00:00:00.000Z] log hello world');
   });
 });

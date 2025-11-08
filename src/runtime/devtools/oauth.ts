@@ -1,16 +1,16 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { logDebugError } from '../../util/errors';
-import { delay } from '../../util/time';
+import { logDebugError } from '../../util/errors.js';
+import { delay } from '../../util/time.js';
 import {
   connectPuppeteerBrowser,
   navigatePuppeteerPage,
   resolvePuppeteerPage,
   waitForPageReady,
-} from '../chrome/puppeteer';
-import { urlsRoughlyMatch } from '../url';
-import { evaluateInDevToolsTab, fetchDevToolsTabsWithRetry } from './cdp';
-import type { SweetLinkOauthAuthorizeContext, SweetLinkOauthAutomation, TwitterOauthAutoAcceptResult } from './types';
+} from '../chrome/puppeteer.js';
+import { urlsRoughlyMatch } from '../url.js';
+import { evaluateInDevToolsTab, fetchDevToolsTabsWithRetry } from './cdp.js';
+import type { SweetLinkOauthAuthorizeContext, SweetLinkOauthAutomation, TwitterOauthAutoAcceptResult } from './types.js';
 
 interface AttemptOauthAutomationParameters {
   devtoolsUrl: string;

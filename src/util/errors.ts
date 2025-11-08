@@ -1,4 +1,4 @@
-import { sweetLinkDebug } from '../env';
+import { sweetLinkDebug } from '../env.js';
 
 /** Extracts a readable message from unknown error-like values. */
 export function extractEventMessage(event: unknown, prefix?: string): string {

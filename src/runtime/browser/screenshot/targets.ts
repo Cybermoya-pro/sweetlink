@@ -1,5 +1,5 @@
 import type { SweetLinkScreenshotCommand } from '@sweetlink/shared';
-import type { ScreenshotTargetInfo } from '../types';
+import type { ScreenshotTargetInfo } from '../types.js';
 
 export const HTML2CANVAS_TARGET_ATTR = 'data-sweetlink-html2canvas-target';
 

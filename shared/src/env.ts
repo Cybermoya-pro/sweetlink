@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { SWEETLINK_DEFAULT_PORT } from './index';
+import { SWEETLINK_DEFAULT_PORT } from './index.js';
 
 export interface SweetLinkSharedEnv {
   readonly appLabel: string;

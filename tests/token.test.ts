@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CliConfig } from '../src/types';
 
 const fetchJsonMock = vi.fn();
 const resolveSecretMock = vi.fn();
@@ -27,11 +28,14 @@ vi.mock('../shared/src', async () => {
 
 const { fetchCliToken, resetCliTokenCache } = await import('../../src/token');
 
-const baseConfig = {
-  appBaseUrl: 'https://app.example.dev',
-  adminApiKey: null,
+const baseConfig: CliConfig = {
   appLabel: 'Sweetistics',
-} as any;
+  appBaseUrl: 'https://app.example.dev',
+  daemonBaseUrl: 'https://daemon.example.dev',
+  adminApiKey: null,
+  oauthScriptPath: null,
+  servers: {},
+};
 
 beforeEach(() => {
   resetCliTokenCache();

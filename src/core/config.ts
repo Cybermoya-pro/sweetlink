@@ -1,10 +1,10 @@
 import path from 'node:path';
 import type { Command } from 'commander';
-import { sweetLinkEnv } from '../env';
-import type { CliConfig } from '../types';
-import { formatAppLabel, normalizeAppLabel } from '../util/app-label';
-import { loadSweetLinkFileConfig } from './config-file';
-import { readCommandOptions } from './env';
+import { sweetLinkEnv } from '../env.js';
+import type { CliConfig } from '../types.js';
+import { formatAppLabel, normalizeAppLabel } from '../util/app-label.js';
+import { loadSweetLinkFileConfig } from './config-file.js';
+import { readCommandOptions } from './env.js';
 
 interface ResolvedServerConfig {
   readonly env: string;

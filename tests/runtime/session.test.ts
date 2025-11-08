@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CliConfig } from '../../src/types';
 
 const fetchJsonMock = vi.fn();
 const fetchCliTokenMock = vi.fn().mockResolvedValue('cli-token');
@@ -37,9 +38,14 @@ const {
   getSessionSummaryById,
 } = sessionModule;
 
-const config = {
+const config: CliConfig = {
+  appLabel: 'SweetLink Test',
+  appBaseUrl: 'https://app.test.dev',
   daemonBaseUrl: 'https://daemon.dev',
-} as any;
+  adminApiKey: null,
+  oauthScriptPath: null,
+  servers: {},
+};
 
 beforeEach(() => {
   vi.restoreAllMocks();

@@ -1,4 +1,4 @@
-import { logDebugError } from '../util/errors';
+import { logDebugError } from '../util/errors.js';
 
 type NextDevtoolsToolResult =
   | {

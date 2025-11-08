@@ -1,5 +1,5 @@
-import { logDebugError } from '../../util/errors';
-import { connectPuppeteerBrowser, resolvePuppeteerPage } from './puppeteer';
+import { logDebugError } from '../../util/errors.js';
+import { connectPuppeteerBrowser, resolvePuppeteerPage } from './puppeteer.js';
 
 export async function focusControlledChromePage(devtoolsUrl: string, targetUrl: string): Promise<boolean> {
   let puppeteer: typeof import('puppeteer').default;

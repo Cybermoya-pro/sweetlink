@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import type { SweetLinkCommandResult } from '../../shared/src';
-import { sweetLinkDebug } from '../env';
+import type { SweetLinkCommandResult } from '../../shared/src/index.js';
+import { sweetLinkDebug } from '../env.js';
 
 export interface RunJsOptions {
   code?: string[];
