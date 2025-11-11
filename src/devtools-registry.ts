@@ -5,6 +5,10 @@ import { WebSocket } from 'undici';
 import { sweetLinkDebug } from './env.js';
 
 const DEVTOOLS_REGISTRY_PATH = path.join(os.homedir(), '.sweetlink', 'devtools-registry.json');
+const TRAILING_SLASH_PATTERN = /\/$/;
+const OPTIONAL_TRAILING_SLASH_PATTERN = /\/?$/;
+const SWEETLINK_CHROME_DIR_PATTERN = /sweetlink-chrome-(\d+)-/;
+const SWEETLINK_CHROME_PREFIX_PATTERN = /^sweetlink-chrome-(\d+)-/;
 
 interface ControlledChromeRecord {
   devtoolsUrl: string;
@@ -13,7 +17,7 @@ interface ControlledChromeRecord {
 }
 
 function normalizeDevtoolsUrl(input: string): string {
-  return input.replace(/\/$/, '');
+  return input.replace(TRAILING_SLASH_PATTERN, '');
 }
 
 const DEBUG_DEVTOOLS_REGISTRY = sweetLinkDebug;
@@ -61,7 +65,7 @@ export async function registerControlledChromeInstance(
   devtoolsUrl: string,
   userDataDirectory: string | undefined
 ): Promise<void> {
-  if (!userDataDirectory || !userDataDirectory.includes('sweetlink-chrome-')) {
+  if (!userDataDirectory?.includes('sweetlink-chrome-')) {
     return;
   }
   let portSegment: string | null = null;
@@ -123,8 +127,9 @@ export async function cleanupControlledChromeRegistry(activeDevtoolsUrl?: string
         entry.userDataDirectory &&
         !entry.userDataDirectory.includes(`sweetlink-chrome-${portSegment}`)
       ) {
-        const stalePortMatch = entry.userDataDirectory.match(/sweetlink-chrome-(\d+)-/);
+        const stalePortMatch = entry.userDataDirectory.match(SWEETLINK_CHROME_DIR_PATTERN);
         if (stalePortMatch) {
+          // biome-ignore lint/performance/noAwaitInLoops: chrome instances must close sequentially to avoid reusing stale ports.
           await attemptCloseControlledChrome(`http://127.0.0.1:${stalePortMatch[1]}`);
         }
         continue;
@@ -154,15 +159,15 @@ export async function cleanupControlledChromeRegistry(activeDevtoolsUrl?: string
 }
 
 async function attemptCloseControlledChrome(devtoolsUrl: string): Promise<boolean> {
-  const normalized = devtoolsUrl.replace(/\/?$/, '');
+  const normalized = devtoolsUrl.replace(OPTIONAL_TRAILING_SLASH_PATTERN, '');
 
   try {
     const response = await fetch(`${normalized}/json/version`, { method: 'GET' });
     if (!response.ok) {
       return false;
     }
-    const payload = (await response.json()) as { webSocketDebuggerUrl?: string };
-    const wsUrl = payload.webSocketDebuggerUrl;
+    const debuggerPayload = (await response.json()) as { webSocketDebuggerUrl?: string };
+    const wsUrl = debuggerPayload.webSocketDebuggerUrl;
     if (!wsUrl) {
       return false;
     }
@@ -204,8 +209,8 @@ async function attemptCloseControlledChrome(devtoolsUrl: string): Promise<boolea
       });
 
       socket.addEventListener('message', (event) => {
-        const payload = parseDebuggerMessage(event.data);
-        if (payload?.id === 1) {
+        const messagePayload = parseDebuggerMessage(event.data);
+        if (messagePayload?.id === 1) {
           clearTimeout(timeout);
           socket.close();
           finish();
@@ -278,7 +283,7 @@ async function closeLingeringChromeProcesses(activeDevtoolsUrl: string | null): 
   let sweeps = 0;
 
   for (const entry of entries) {
-    const match = entry.match(/^sweetlink-chrome-(\d+)-/);
+    const match = entry.match(SWEETLINK_CHROME_PREFIX_PATTERN);
     if (!match) {
       continue;
     }
@@ -294,6 +299,7 @@ async function closeLingeringChromeProcesses(activeDevtoolsUrl: string | null): 
     if (activePort && port === activePort) {
       continue;
     }
+    // biome-ignore lint/performance/noAwaitInLoops: sequential port sweeps avoid throttling Chrome shutdown.
     const closed = await attemptCloseControlledChrome(`http://127.0.0.1:${port}`);
     sweeps += 1;
     if (sweeps >= MAX_SWEEPS) {

@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { type CommandExecutor, createCommandExecutor } from './commands/index.js';
 import { createHookRunner, createScreenshotHooks } from './screenshot/index.js';
 import { stripDataUrlPrefix } from './screenshot/renderers/dom-to-image.js';
@@ -26,6 +27,8 @@ import { getBrowserWindow } from './utils/environment.js';
 import { describeUnknown, toError } from './utils/errors.js';
 import { sanitizeResult } from './utils/sanitize.js';
 import { normalizeExpiresAtMs } from './utils/time.js';
+
+const UNAUTHORIZED_PATTERN = regex.as('401');
 
 const defaultLogger: SweetLinkLogger = {
   info: (message, ...details) => {
@@ -147,7 +150,9 @@ class SweetLinkBrowserClient implements SweetLinkClient {
     this.lastReconnectLogAt = 0;
     this.announceStatus('connecting');
 
-    void this.screenshot.preloadLibraries();
+    this.screenshot.preloadLibraries().catch((error: unknown) => {
+      this.logger.warn('[SweetLink] Failed to preload screenshot libraries', error);
+    });
 
     await this.openSocket();
   }
@@ -229,7 +234,7 @@ class SweetLinkBrowserClient implements SweetLinkClient {
           const payload = parsedPayload as SweetLinkServerMessage;
           this.logger.info('[SweetLink] server message kind', (payload as { kind?: unknown }).kind);
           if (payload.kind === 'command') {
-            void this.handleServerCommand(payload).catch((error: unknown) => {
+            this.handleServerCommand(payload).catch((error: unknown) => {
               this.logger.error('[SweetLink] command error', error);
             });
             return;
@@ -336,7 +341,7 @@ class SweetLinkBrowserClient implements SweetLinkClient {
   }
 
   private startHeartbeat() {
-    if (!this.currentSession || !this.windowRef) {
+    if (!(this.currentSession && this.windowRef)) {
       return;
     }
     const clientWindow = this.windowRef;
@@ -437,7 +442,9 @@ class SweetLinkBrowserClient implements SweetLinkClient {
     }
     this.reconnectTimer = clientWindow.setTimeout(() => {
       this.reconnectTimer = null;
-      void this.attemptAutoReconnect();
+      this.attemptAutoReconnect().catch((error: unknown) => {
+        this.logger.warn('[SweetLink] auto-reconnect failed', error);
+      });
     }, delayMs);
   }
 
@@ -486,7 +493,7 @@ class SweetLinkBrowserClient implements SweetLinkClient {
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      if (/401/.test(message)) {
+      if (UNAUTHORIZED_PATTERN.test(message)) {
         clientWindow.__sweetlinkAutoReconnectEnabled = false;
         this.storage.clear();
         this.announceStatus('error', { reason: 'SweetLink authentication required. Reopen the menu.' });

@@ -40,7 +40,7 @@ export function discoverSelectorCandidates(options: DiscoveryOptions): SweetLink
       const computed = getComputedStyle(element);
       const visible = isVisible(rect, computed);
 
-      if (!includeHidden && !visible) {
+      if (!(includeHidden || visible)) {
         return null;
       }
 

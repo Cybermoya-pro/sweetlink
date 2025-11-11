@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { uniq } from 'es-toolkit';
 import type { Browser as PuppeteerBrowser, Page as PuppeteerPage } from 'puppeteer';
 import { sweetLinkDebug } from '../../env.js';
@@ -5,6 +6,8 @@ import { delay } from '../../util/time.js';
 import { buildCookieOrigins, collectChromeCookies, type PuppeteerCookieParam } from '../cookies.js';
 import { PUPPETEER_PROTOCOL_TIMEOUT_MS } from './constants.js';
 import { attemptPuppeteerReload, navigatePuppeteerPage, resolvePuppeteerPage, waitForPageReady } from './puppeteer.js';
+
+const AUTH_COOKIE_PATTERN = regex.as('auth|session|token', 'i');
 
 type PrimeChromeCookiesDeps = {
   collectChromeCookies: typeof collectChromeCookies;
@@ -56,6 +59,7 @@ export async function primeControlledChromeCookies(
   let browser: PuppeteerBrowser | null = null;
   for (let attempt = 0; attempt < 10; attempt += 1) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: puppeteer connection retries must be sequential.
       browser = await puppeteer.connect({
         browserURL: options.devtoolsUrl,
         defaultViewport: null,
@@ -112,7 +116,7 @@ export async function primeControlledChromeCookies(
       .map((cookie) => (typeof cookie.name === 'string' ? cookie.name : null))
       .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
     if (cookieNames.length > 0) {
-      const authCookies = uniq(cookieNames.filter((name) => /auth|session|token/i.test(name)));
+      const authCookies = uniq(cookieNames.filter((name) => AUTH_COOKIE_PATTERN.test(name)));
       if (authCookies.length > 0) {
         console.log(`Detected likely auth cookies: ${authCookies.join(', ')}.`);
       } else {
@@ -153,6 +157,7 @@ async function verifyCookieSync(
     const origins = buildOrigins(targetUrl);
     for (const origin of origins) {
       try {
+        // biome-ignore lint/performance/noAwaitInLoops: cookie collection per origin must remain sequential for accurate logging.
         const cookies = await page.cookies(origin);
         for (const cookie of cookies) {
           appliedNames.add(cookie.name);

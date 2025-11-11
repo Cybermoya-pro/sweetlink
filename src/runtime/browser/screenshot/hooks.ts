@@ -73,7 +73,7 @@ export const createHookRunner = (source: string): HookRunner => {
   const blobUrl = URL.createObjectURL(blob);
   let compiledRunnerPromise: Promise<HookRunner> | null = null;
 
-  const loadRunner = async (): Promise<HookRunner> => {
+  const loadRunner = (): Promise<HookRunner> => {
     if (!compiledRunnerPromise) {
       compiledRunnerPromise = loadDefaultExportFromUrl<HookRunner>(blobUrl)
         .catch((error: unknown) => {
@@ -177,7 +177,7 @@ function resolveHookTarget(
   return element;
 }
 
-async function waitForSelectorHook(
+function waitForSelectorHook(
   selector: string,
   options: { visibility: 'any' | 'visible'; timeoutMs: number }
 ): Promise<HTMLElement> {
@@ -242,9 +242,7 @@ function waitForAnimationFrame(): Promise<void> {
   });
 }
 
-export const delay = (ms: number): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, clamp(ms, 0, Number.POSITIVE_INFINITY)));
-};
+export const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, clamp(ms, 0, Number.POSITIVE_INFINITY)));
 
 async function runHookScript(code: string, target: HTMLElement): Promise<void> {
   const normalizedCode = toTrimmedNonEmptyString(code);

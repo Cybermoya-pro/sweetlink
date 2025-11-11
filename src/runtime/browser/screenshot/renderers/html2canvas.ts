@@ -65,7 +65,7 @@ export async function captureWithHtml2Canvas(
       onclone: (clonedDocument) => {
         const cloneWindow = clonedDocument.defaultView;
         const cloneTarget = clonedDocument.querySelector(`[${HTML2CANVAS_TARGET_ATTR}="${markerValue}"]`);
-        if (!cloneWindow || !cloneTarget || !(cloneTarget instanceof cloneWindow.HTMLElement)) {
+        if (!((cloneWindow && cloneTarget ) && (cloneTarget instanceof cloneWindow.HTMLElement))) {
           return;
         }
         const rect = targetInfo.base.getBoundingClientRect();

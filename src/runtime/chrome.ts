@@ -1,3 +1,4 @@
+/* biome-ignore lint/performance/noBarrelFile: chrome entrypoint re-exports modules for backwards compatibility. */
 export * from './chrome/constants.js';
 export * from './chrome/cookies.js';
 export * from './chrome/diagnostics.js';

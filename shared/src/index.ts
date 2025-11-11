@@ -57,7 +57,7 @@ export function verifySweetLinkToken({ secret, token, expectedScope }: VerifyTok
     throw new Error('SweetLink secret is not configured');
   }
   const [encodedPayload, providedSignature] = token.split('.', 2);
-  if (!encodedPayload || !providedSignature) {
+  if (!(encodedPayload && providedSignature)) {
     throw new Error('Malformed SweetLink token');
   }
   const expectedSignature = signEncodedPayload(secret, encodedPayload);

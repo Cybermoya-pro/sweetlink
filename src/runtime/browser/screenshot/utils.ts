@@ -12,6 +12,15 @@ let html2canvasColorPatchState: PatchState = 'unpatched';
 const patchedCssWindows = new WeakSet<Window>();
 const browserWindow = (globalThis as { window?: Window | null }).window ?? null;
 
+const SAFE_CSS_PROPERTY_PATTERN = regex.as('^[a-z-]+$', 'i');
+const OKLCH_PATTERN = regex.as('okl(?:ab|ch)', 'i');
+const WHITESPACE_SPLIT_PATTERN = regex.as(String.raw`\s+`);
+const TRAILING_ZERO_PATTERN = regex.as(String.raw`\.0+$`);
+
+const noop = () => {
+  /* intentionally blank */
+};
+
 export const recordScreenshotError = (kind: string, error: unknown): void => {
   if (browserWindow === null) {
     return;
@@ -44,9 +53,9 @@ type KnownCssProperty =
 type CssPropertyName = KnownCssProperty | `--${string}`;
 
 const isSafeCssProperty = (property: CssPropertyName): boolean =>
-  /^[a-z-]+$/i.test(property) || property.startsWith('--');
+  SAFE_CSS_PROPERTY_PATTERN.test(property) || property.startsWith('--');
 
-export async function loadDomToImage(): Promise<DomToImageModule> {
+export function loadDomToImage(): Promise<DomToImageModule> {
   if (domToImagePromise) {
     return domToImagePromise;
   }
@@ -146,7 +155,7 @@ function ensureCssGetPropertyValuePatched(contextWindow: Window): void {
 export function normalizeOklchColors(root: HTMLElement, contextDocument: Document = document): () => void {
   const contextWindow = contextDocument.defaultView ?? browserWindow;
   if (!contextWindow) {
-    return () => {};
+    return noop;
   }
   ensureCssGetPropertyValuePatched(contextWindow);
 
@@ -155,7 +164,7 @@ export function normalizeOklchColors(root: HTMLElement, contextDocument: Documen
   const fallbackBody = fallbackDocumentElement instanceof HTMLElement ? fallbackDocumentElement : null;
   const body = rawBody ?? fallbackBody;
   if (body === null) {
-    return () => {};
+    return noop;
   }
 
   const properties: KnownCssProperty[] = [
@@ -207,7 +216,7 @@ export function normalizeOklchColors(root: HTMLElement, contextDocument: Documen
         continue;
       }
       const lowerValue = currentValue.toLowerCase();
-      if (!lowerValue.includes('oklch') && !lowerValue.includes('oklab')) {
+      if (!(lowerValue.includes('oklch') || lowerValue.includes('oklab'))) {
         continue;
       }
 
@@ -335,7 +344,7 @@ function replaceOkColorFunctions(input: string): string | null {
   let output = result;
   const colorMixPattern = regex.as(String.raw`color-mix\(\s*in\s+okl(?:ab|ch)`, 'gi');
   if (colorMixPattern.test(output)) {
-    output = output.replaceAll(colorMixPattern, (segment) => segment.replace(/okl(?:ab|ch)/i, 'srgb'));
+    output = output.replaceAll(colorMixPattern, (segment) => segment.replace(OKLCH_PATTERN, 'srgb'));
     changed = true;
   }
   if (!changed || output === input) {
@@ -351,7 +360,7 @@ function convertOklchToRgb(payload: string): string | null {
     return null;
   }
 
-  const components = compact(colorPart.split(/\s+/).map((token) => token.trim()));
+  const components = compact(colorPart.split(WHITESPACE_SPLIT_PATTERN).map((token) => token.trim()));
   if (components.length < 3) {
     return null;
   }
@@ -374,7 +383,7 @@ function convertOklchToRgb(payload: string): string | null {
   if (alpha >= 0.999) {
     return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
   }
-  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${alpha.toFixed(3).replace(/\.0+$/, '')})`;
+  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${alpha.toFixed(3).replace(TRAILING_ZERO_PATTERN, '')})`;
 }
 
 function convertOklabToRgb(payload: string): string | null {
@@ -384,7 +393,7 @@ function convertOklabToRgb(payload: string): string | null {
     return null;
   }
 
-  const components = compact(colorPart.split(/\s+/).map((token) => token.trim()));
+  const components = compact(colorPart.split(WHITESPACE_SPLIT_PATTERN).map((token) => token.trim()));
   if (components.length < 3) {
     return null;
   }
@@ -407,7 +416,7 @@ function convertOklabToRgb(payload: string): string | null {
   if (alpha >= 0.999) {
     return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
   }
-  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${alpha.toFixed(3).replace(/\.0+$/, '')})`;
+  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${alpha.toFixed(3).replace(TRAILING_ZERO_PATTERN, '')})`;
 }
 
 function parseOklchComponent(value: string, options: { isPercentage?: boolean; clampZero?: boolean }): number | null {

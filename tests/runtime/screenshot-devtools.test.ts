@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const writeFileMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('node:fs/promises', () => ({
@@ -77,7 +81,7 @@ describe('tryDevToolsRecovery', () => {
   it('logs recovery details when the Puppeteer fallback succeeds', async () => {
     fetchMock.mockResolvedValueOnce({ ok: true });
     const logInfo = vi.fn();
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     const recovered = await tryDevToolsRecovery({
       sessionUrl: 'https://app.example.dev/dashboard',

@@ -1,5 +1,11 @@
+import { regex } from 'arkregex';
 import { Command } from 'commander';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const noop = () => {
+  /* suppress console noise */
+};
+const MKCERT_EXIT_PATTERN = regex.as('mkcert exited');
 
 const accessMock = vi.fn();
 
@@ -35,7 +41,7 @@ describe('registerTrustCaCommand', () => {
     } as unknown as ReturnType<typeof spawnMock>;
     spawnMock.mockReturnValue(child);
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await program.parseAsync(['trust-ca', '--mkcert', '/usr/local/bin/mkcert'], { from: 'user' });
 
@@ -62,6 +68,6 @@ describe('registerTrustCaCommand', () => {
     } as unknown as ReturnType<typeof spawnMock>;
     spawnMock.mockReturnValue(child);
 
-    await expect(program.parseAsync(['trust-ca'], { from: 'user' })).rejects.toThrow(/mkcert exited/);
+    await expect(program.parseAsync(['trust-ca'], { from: 'user' })).rejects.toThrow(MKCERT_EXIT_PATTERN);
   });
 });

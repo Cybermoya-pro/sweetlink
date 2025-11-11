@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const delayMock = vi.fn().mockResolvedValue(undefined);
 const logDebugErrorMock = vi.fn();
 
@@ -40,7 +44,7 @@ describe('connectPuppeteerBrowser', () => {
     const puppeteer = {
       connect: vi.fn().mockRejectedValue(new Error('offline')),
     } as unknown as typeof import('puppeteer').default;
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const browser = await connectPuppeteerBrowser(puppeteer, 'http://localhost:9222', 3);
 

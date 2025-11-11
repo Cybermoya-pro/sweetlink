@@ -5,29 +5,25 @@ const { cloneProcessEnv, readLocalEnvString, readCommandOptions } = envModule;
 
 describe('cloneProcessEnv', () => {
   it('returns a shallow copy that can be mutated without affecting process.env', () => {
-    // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise clone helper.
     process.env.TEST_CLONE_VAR = 'original';
 
     const copy = cloneProcessEnv();
 
     copy.TEST_CLONE_VAR = 'mutated';
-    // biome-ignore lint/style/noProcessEnv: asserting original env survives.
     expect(process.env.TEST_CLONE_VAR).toBe('original');
   });
 });
 
 describe('readLocalEnvString', () => {
   it('returns trimmed strings and null when the variable is missing or empty', () => {
-    // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise helper behavior.
     process.env.TEST_STRING_PRESENT = '  value  ';
-    // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise helper behavior.
     process.env.TEST_STRING_EMPTY = '   ';
-    // biome-ignore lint/style/noProcessEnv: intentionally mutating env to exercise helper behavior.
-    delete process.env.TEST_STRING_MISSING;
+    const missingKey = '__SWEETLINK_CORE_ENV_TEST_MISSING__';
+    Reflect.deleteProperty(process.env, missingKey);
 
     expect(readLocalEnvString('TEST_STRING_PRESENT')).toBe('value');
     expect(readLocalEnvString('TEST_STRING_EMPTY')).toBeNull();
-    expect(readLocalEnvString('TEST_STRING_MISSING')).toBeNull();
+    expect(readLocalEnvString(missingKey)).toBeNull();
   });
 });
 

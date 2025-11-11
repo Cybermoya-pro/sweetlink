@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,7 +117,37 @@ import { extractEventMessage, isErrnoException, logDebugError } from './util/err
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '../../..');
+
+function resolveRepoRoot(startDir: string): string {
+  let currentDir = startDir;
+  // Walk up until a package.json exists or we reach the filesystem root.
+  // This keeps the CLI working whether we run from `src` (tsx) or `dist/src`.
+  while (!existsSync(path.join(currentDir, 'package.json'))) {
+    const parent = path.dirname(currentDir);
+    if (parent === currentDir) {
+      return startDir;
+    }
+    currentDir = parent;
+  }
+  return currentDir;
+}
+
+const repoRoot = resolveRepoRoot(__dirname);
+const packageJsonPath = path.join(repoRoot, 'package.json');
+let packageVersion = '0.0.0';
+try {
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string };
+  if (typeof packageJson.version === 'string') {
+    packageVersion = packageJson.version;
+  }
+} catch {
+  // Ignore and keep default version when package metadata can't be read.
+}
+
+const SESSION_RECOVERY_PATTERN = /session not found|session did not exist|session not available/i;
+const LEADING_SLASH_PATTERN = /^\/+/;
+const OAUTH_URL_PATTERN = /oauth|authorize/i;
+const TRAILING_SLASH_PATTERN = /\/?$/;
 
 function formatDuration(ms: number): string {
   if (!Number.isFinite(ms)) {
@@ -146,10 +176,6 @@ function formatDuration(ms: number): string {
   const precision = days < 10 ? 1 : 0;
   return `${days.toFixed(precision)} d`;
 }
-
-const require = createRequire(import.meta.url);
-const packageJson = require('../../package.json') as { version?: string };
-const packageVersion = typeof packageJson.version === 'string' ? packageJson.version : '0.0.0';
 
 const program = new Command();
 program
@@ -360,10 +386,10 @@ program
       }
       for (const cookie of cookies) {
         const scope = cookie.domain ? `domain=${cookie.domain}` : `url=${cookie.url ?? 'unknown'}`;
-        const path = cookie.path ?? '/';
+        const cookiePath = cookie.path ?? '/';
         const secureFlag = cookie.secure ? '; Secure' : '';
         const httpOnlyFlag = cookie.httpOnly ? '; HttpOnly' : '';
-        console.log(`  • ${cookie.name} (${scope} ${path}${secureFlag}${httpOnlyFlag})`);
+        console.log(`  • ${cookie.name} (${scope} ${cookiePath}${secureFlag}${httpOnlyFlag})`);
         console.log(`    ${cookie.value}`);
       }
     }
@@ -1638,7 +1664,7 @@ async function executeSmokeRoute(
     await attemptNavigation();
   } catch (error) {
     const reason = extractEventMessage(error, 'navigation failed');
-    if (/session not found|session did not exist|session not available/i.test(reason)) {
+    if (SESSION_RECOVERY_PATTERN.test(reason)) {
       console.warn('  Session went offline during navigation command. Attempting recovery…');
       const recovered = await ensureSweetLinkSessionConnected({
         config: context.config,
@@ -1853,6 +1879,7 @@ async function runSweetLinkSmoke(
   let session = initialSession;
   const failures: SmokeFailure[] = [];
   for (let routeIndex = startIndex; routeIndex < params.routes.length; routeIndex += 1) {
+    // biome-ignore lint/performance/noAwaitInLoops: smoke routes must execute sequentially to reuse evolving session state.
     const result = await executeSmokeRoute(context, { session, lastKnownUrl }, params.routes[routeIndex], routeIndex);
     session = result.session;
     lastKnownUrl = result.lastKnownUrl;
@@ -1884,12 +1911,12 @@ async function runSweetLinkSmoke(
   }
 }
 
-function extractPathSegments(path: string): string[] {
-  const normalized = trimTrailingSlash(path);
+function extractPathSegments(routePath: string): string[] {
+  const normalized = trimTrailingSlash(routePath);
   if (normalized === '/' || normalized.length === 0) {
     return [];
   }
-  return normalized.replace(/^\/+/, '').split('/');
+  return normalized.replace(LEADING_SLASH_PATTERN, '').split('/');
 }
 
 function suffixSegmentsAllowed(segments: string[]): boolean {
@@ -1909,6 +1936,7 @@ export const __sweetlinkCliTestHelpers = {
   buildClickScript,
 };
 
+/* biome-ignore lint/performance/noBarrelFile: CLI entrypoint intentionally re-exports runtime helpers for compatibility. */
 export { diagnosticsContainBlockingIssues, logBootstrapDiagnostics } from './runtime/devtools.js';
 export {
   buildClickScript,
@@ -1922,7 +1950,7 @@ export {
 function urlsRoughlyMatch(a: string, b: string): boolean {
   const urlA = normalizeUrlForMatch(a);
   const urlB = normalizeUrlForMatch(b);
-  if (!urlA || !urlB) {
+  if (!(urlA && urlB)) {
     return a === b;
   }
   if (urlA.origin !== urlB.origin) {
@@ -1977,7 +2005,7 @@ async function devtoolsAuthorize(options: { url?: string }, command: Command): P
         if (!tab.url) {
           return false;
         }
-        return /oauth|authorize/i.test(tab.url);
+        return OAUTH_URL_PATTERN.test(tab.url);
       });
       if (oauthTab?.url) {
         sessionUrl = oauthTab.url;
@@ -2033,10 +2061,10 @@ async function devtoolsStatus(options: { json?: boolean }, command: Command): Pr
     return;
   }
 
-  let reachable: boolean = false;
+  let reachable: boolean | undefined;
   let tabs: Array<{ id: string; title: string; url: string; type?: string }> = [];
   try {
-    const response = await fetch(`${config.devtoolsUrl.replace(/\/?$/, '')}/json/version`, { method: 'GET' });
+    const response = await fetch(`${config.devtoolsUrl.replace(TRAILING_SLASH_PATTERN, '')}/json/version`, { method: 'GET' });
     if (response.ok) {
       reachable = true;
       tabs = await fetchDevToolsTabs(config.devtoolsUrl);
@@ -2064,9 +2092,11 @@ async function devtoolsStatus(options: { json?: boolean }, command: Command): Pr
     // Skip session lookup when admin key is unavailable
   }
 
+  const isReachable = reachable === true;
+
   const summary = {
     config,
-    reachable,
+    reachable: isReachable,
     tabs: tabs.map((tab) => ({ id: tab.id, title: tab.title, url: tab.url, type: tab.type })),
     telemetry: {
       consoleCount: state?.console.length ?? 0,
@@ -2082,7 +2112,7 @@ async function devtoolsStatus(options: { json?: boolean }, command: Command): Pr
     return;
   }
 
-  const reachabilityLabel = reachable ? 'reachable' : 'offline';
+  const reachabilityLabel = isReachable ? 'reachable' : 'offline';
   console.log(`DevTools endpoint : ${config.devtoolsUrl} (${reachabilityLabel})`);
   console.log(`Last updated      : ${new Date(config.updatedAt).toISOString()}`);
   if (config.viewport) {
@@ -2287,7 +2317,7 @@ async function devtoolsListen(
       }
       timer = setTimeout(() => {
         timer = null;
-        void flush().catch((error) => {
+        flush().catch((error) => {
           console.warn('Failed to persist DevTools telemetry:', error);
         });
       }, 300);
@@ -2297,30 +2327,28 @@ async function devtoolsListen(
   const attachListeners = (p: Page) => {
     // Capture console and network events for the page and trim buffers as they grow.
     p.on('console', (message: ConsoleMessage) => {
-      void (async () => {
-        try {
-          const entry = await serializeConsoleMessage(message);
-          devtoolsState.console.push(entry);
-          trimBuffer(devtoolsState.console, DEVTOOLS_CONSOLE_LIMIT);
-          scheduleFlush();
-        } catch (error) {
-          console.warn('Failed to serialize console message:', error);
-        }
-      })();
+      const persistConsole = async () => {
+        const entry = await serializeConsoleMessage(message);
+        devtoolsState.console.push(entry);
+        trimBuffer(devtoolsState.console, DEVTOOLS_CONSOLE_LIMIT);
+        scheduleFlush();
+      };
+      persistConsole().catch((error) => {
+        console.warn('Failed to serialize console message:', error);
+      });
     });
 
     p.on('requestfinished', (request: Request) => {
-      void (async () => {
-        try {
-          const response = await request.response();
-          const entry = createNetworkEntryFromRequest(request, response?.status());
-          devtoolsState.network.push(entry);
-          trimBuffer(devtoolsState.network, DEVTOOLS_NETWORK_LIMIT);
-          scheduleFlush();
-        } catch (error) {
-          console.warn('Failed to process requestfinished event:', error);
-        }
-      })();
+      const persistNetworkEntry = async () => {
+        const response = await request.response();
+        const entry = createNetworkEntryFromRequest(request, response?.status());
+        devtoolsState.network.push(entry);
+        trimBuffer(devtoolsState.network, DEVTOOLS_NETWORK_LIMIT);
+        scheduleFlush();
+      };
+      persistNetworkEntry().catch((error) => {
+        console.warn('Failed to serialize network request:', error);
+      });
     });
 
     p.on('requestfailed', (request: Request) => {
@@ -2361,10 +2389,18 @@ async function devtoolsListen(
   };
 
   process.once('SIGINT', () => {
-    void shutdown();
+    shutdown().catch((error) => {
+      if (sweetLinkDebug) {
+        console.warn('Graceful shutdown after SIGINT failed:', error);
+      }
+    });
   });
   process.once('SIGTERM', () => {
-    void shutdown();
+    shutdown().catch((error) => {
+      if (sweetLinkDebug) {
+        console.warn('Graceful shutdown after SIGTERM failed:', error);
+      }
+    });
   });
 
   await new Promise(() => {

@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnMock = vi.hoisted(() => vi.fn());
 
+const noop = () => {
+  /* silence console during tests */
+};
+
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }));
@@ -104,7 +108,7 @@ describe('codex helpers', () => {
   it('returns true when console analysis completes successfully', async () => {
     const child = createChild();
     spawnMock.mockReturnValue(child);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
     const resultPromise = analyzeConsoleWithCodex(
       '#cta',
       'Any errors?',
@@ -129,7 +133,7 @@ describe('codex helpers', () => {
   it('returns false and warns when Codex exits with an error code', async () => {
     const child = createChild();
     spawnMock.mockReturnValue(child);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const resultPromise = analyzeConsoleWithCodex('#cta', 'Why?', [], {});
     setImmediate(() => child.emit('close', 2));
 
@@ -142,7 +146,7 @@ describe('codex helpers', () => {
   it('warns with a helpful hint when the CLI is missing', async () => {
     const child = createChild();
     spawnMock.mockReturnValue(child);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const resultPromise = analyzeConsoleWithCodex('#cta', 'Need CLI?', []);
     setImmediate(() => {
       const error = new Error('not found');

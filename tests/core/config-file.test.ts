@@ -4,6 +4,10 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadSweetLinkFileConfig, resetSweetLinkFileConfigCache } from '../../src/core/config-file';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const ORIGINAL_CWD = process.cwd();
 
 let workingDir: string | null = null;
@@ -134,7 +138,7 @@ describe('core/config-file', () => {
   it('returns empty config and warns when JSON is invalid', () => {
     const filePath = path.join(process.cwd(), 'sweetlink.json');
     writeFileSync(filePath, '{ invalid json', 'utf8');
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const loaded = loadSweetLinkFileConfig();
     expect(loaded.path).toEqual(filePath);

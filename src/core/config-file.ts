@@ -1,6 +1,9 @@
+import { regex } from 'arkregex';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { compact } from 'es-toolkit';
+
+const TRAILING_SLASHES_PATTERN = regex.as('\/+$');
 
 export interface SweetLinkCookieMapping {
   hosts: string[];
@@ -247,7 +250,7 @@ function normalizeSmokeRoutesSection(value: unknown): SweetLinkSmokeRoutesConfig
       : {};
   const hasDefaults = defaults.length > 0;
   const hasPresets = Object.keys(normalizedPresets).length > 0;
-  if (!hasDefaults && !hasPresets) {
+  if (!(hasDefaults || hasPresets)) {
     return null;
   }
   const config: SweetLinkSmokeRoutesConfig = {
@@ -335,7 +338,7 @@ function canonicalizeRedirectPath(value: string): string | null {
   if (!normalized.startsWith('/')) {
     normalized = `/${normalized}`;
   }
-  normalized = normalized.replace(/\/+$/, '');
+  normalized = normalized.replace(TRAILING_SLASHES_PATTERN, '');
   if (!normalized) {
     return '/';
   }
@@ -344,11 +347,11 @@ function canonicalizeRedirectPath(value: string): string | null {
 
 function normalizeRedirectsSection(value: unknown): SweetLinkRedirectsConfig | undefined {
   if (!value || typeof value !== 'object') {
-    return undefined;
+    return ;
   }
   const entries = Object.entries(value as Record<string, unknown>);
   if (entries.length === 0) {
-    return undefined;
+    return ;
   }
   const redirects: Record<string, string> = {};
   for (const [rawSource, rawTarget] of entries) {
@@ -357,7 +360,7 @@ function normalizeRedirectsSection(value: unknown): SweetLinkRedirectsConfig | u
     }
     const sourcePath = canonicalizeRedirectPath(rawSource);
     const targetPath = canonicalizeRedirectPath(rawTarget);
-    if (!sourcePath || !targetPath) {
+    if (!(sourcePath && targetPath)) {
       continue;
     }
     redirects[sourcePath] = targetPath;

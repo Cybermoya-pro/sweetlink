@@ -77,6 +77,7 @@ export async function ensureDevStackRunning(targetUrl: URL, options: EnsureDevSt
 
   const deadline = Date.now() + checkTimeout;
   while (Date.now() < deadline) {
+    // biome-ignore lint/performance/noAwaitInLoops: health check polling is intentionally sequential.
     if (await isHealthy()) {
       console.log('Dev stack is online.');
       return;
@@ -117,6 +118,7 @@ export async function isAppReachable(appBaseUrl: string, healthPaths?: readonly 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 2000);
       try {
+        // biome-ignore lint/performance/noAwaitInLoops: sequential HEAD requests avoid overwhelming the dev stack.
         await fetch(target, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
         return true;
       } finally {
@@ -126,10 +128,7 @@ export async function isAppReachable(appBaseUrl: string, healthPaths?: readonly 
       const message = extractEventMessage(error);
       const isAbort = (error as { name?: string }).name === 'AbortError';
       if (
-        !message.includes('ECONNREFUSED') &&
-        !message.includes('ENOTFOUND') &&
-        !message.includes('EHOSTUNREACH') &&
-        !isAbort
+        !(((message.includes('ECONNREFUSED') ||message.includes('ENOTFOUND') ) ||message.includes('EHOSTUNREACH') ) ||isAbort)
       ) {
         return false;
       }

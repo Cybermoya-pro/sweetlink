@@ -1,5 +1,11 @@
+import { regex } from 'arkregex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CliConfig } from '../src/types';
+
+const noop = () => {
+  /* suppress console noise */
+};
+const CLI_TOKEN_FAILURE_PATTERN = regex.as('Unable to resolve SweetLink CLI token');
 
 const fetchJsonMock = vi.fn();
 const resolveSecretMock = vi.fn();
@@ -74,7 +80,7 @@ describe('fetchCliToken', () => {
   });
 
   it('falls back to local secrets when the admin API call fails', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     fetchJsonMock.mockRejectedValueOnce(new Error('network down'));
     resolveSecretMock.mockResolvedValue({ secret: 'local-secret', source: 'file' });
     signTokenMock.mockReturnValue('fallback-token');
@@ -93,6 +99,6 @@ describe('fetchCliToken', () => {
     const failure = new Error('permission denied');
     resolveSecretMock.mockRejectedValue(failure);
 
-    await expect(fetchCliToken(baseConfig)).rejects.toThrow(/Unable to resolve SweetLink CLI token/);
+    await expect(fetchCliToken(baseConfig)).rejects.toThrow(CLI_TOKEN_FAILURE_PATTERN);
   });
 });

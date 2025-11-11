@@ -1,4 +1,5 @@
-async function authorize() {
+'use strict';
+function authorize() {
   return { handled: true, action: 'function-export' };
 }
 

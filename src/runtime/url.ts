@@ -1,8 +1,11 @@
+import { regex } from 'arkregex';
 import { URL } from 'node:url';
 
 export const LOOSE_PATH_SUFFIXES = ['home', 'index', 'overview'] as const;
 
 let pathRedirects: Record<string, string> = {};
+const TRAILING_SLASHES_PATTERN = regex.as('\/+$');
+const LEADING_SLASHES_PATTERN = regex.as('^\/+');
 
 export function configurePathRedirects(map: Record<string, string> | undefined): void {
   pathRedirects = {};
@@ -31,7 +34,7 @@ export function trimTrailingSlash(path: string): string {
   if (!path) {
     return '/';
   }
-  const trimmed = path.replace(/\/+$/, '');
+  const trimmed = path.replace(TRAILING_SLASHES_PATTERN, '');
   if (!trimmed) {
     return '/';
   }
@@ -43,7 +46,7 @@ export function extractPathSegments(path: string): string[] {
   if (normalized === '/' || normalized.length === 0) {
     return [];
   }
-  return normalized.replace(/^\/+/, '').split('/');
+  return normalized.replace(LEADING_SLASHES_PATTERN, '').split('/');
 }
 
 export function suffixSegmentsAllowed(segments: string[]): boolean {
@@ -56,7 +59,7 @@ export function suffixSegmentsAllowed(segments: string[]): boolean {
 export function urlsRoughlyMatch(a: string, b: string): boolean {
   const urlA = normalizeUrlForMatch(a);
   const urlB = normalizeUrlForMatch(b);
-  if (!urlA || !urlB) {
+  if (!(urlA && urlB)) {
     return a === b;
   }
   if (urlA.origin !== urlB.origin) {

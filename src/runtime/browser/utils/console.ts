@@ -23,7 +23,7 @@ export function getConsoleMethod<Level extends SweetLinkConsoleLevel>(
       return typeof target.debug === 'function' ? (target.debug as Console[Level]) : undefined;
     }
     default: {
-      return undefined;
+      return ;
     }
   }
 }
@@ -56,6 +56,9 @@ export function setConsoleMethod<Level extends SweetLinkConsoleLevel>(
     case 'debug': {
       target.debug = function_ as Console['debug'];
       return;
+    }
+    default: {
+      break;
     }
   }
 }

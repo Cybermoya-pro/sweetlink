@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import net from 'node:net';
 import type { Page as PuppeteerPage } from 'puppeteer';
 import { cliEnv } from '../../env.js';
@@ -8,6 +9,8 @@ import { urlsRoughlyMatch } from '../url.js';
 import { primeControlledChromeCookies } from './cookies.js';
 import { connectPuppeteerBrowser, navigatePuppeteerPage } from './puppeteer.js';
 import { DEVTOOLS_PORT_SCAN_END, DEVTOOLS_PORT_SCAN_START, PUPPETEER_RELOAD_TIMEOUT_MS } from './reuse/constants.js';
+
+const TRAILING_SLASH_PATTERN = regex.as('/$');
 
 export async function reuseExistingControlledChrome(
   target: string,
@@ -44,7 +47,7 @@ export async function reuseExistingControlledChrome(
   }
 
   for (const candidate of candidates) {
-    const normalized = candidate.url.replace(/\/$/, '');
+    const normalized = candidate.url.replace(TRAILING_SLASH_PATTERN, '');
     if (seen.has(normalized)) {
       continue;
     }
@@ -55,6 +58,7 @@ export async function reuseExistingControlledChrome(
       continue;
     }
 
+    // biome-ignore lint/performance/noAwaitInLoops: reuse attempts must connect sequentially to respect preferred ports.
     const browser = await connectPuppeteerBrowser(puppeteer, normalized, 3);
     if (!browser) {
       continue;
@@ -138,6 +142,7 @@ export async function findAvailablePort(
   end: number = DEVTOOLS_PORT_SCAN_END
 ): Promise<number> {
   for (let port = start; port <= end; port += 1) {
+    // biome-ignore lint/performance/noAwaitInLoops: scanning ports sequentially prevents saturating the system.
     const available = await isPortAvailable(port);
     if (available) {
       return port;

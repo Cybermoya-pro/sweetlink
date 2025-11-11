@@ -46,7 +46,7 @@ export function createScreenshotHooks(): SweetLinkScreenshotHooks & {
             })
             .catch((error: unknown) => {
               recordScreenshotError('domToImage', error);
-              return undefined;
+              return ;
             }),
         ]);
         const debugWindow = browserWindow as Window & {
@@ -100,6 +100,7 @@ export function createScreenshotHooks(): SweetLinkScreenshotHooks & {
   };
 }
 
+/* biome-ignore lint/performance/noBarrelFile: screenshot module re-exports hooks for backwards compatibility. */
 export { createHookRunner } from './hooks.js';
 
 async function tryCaptureWithDomToImage(

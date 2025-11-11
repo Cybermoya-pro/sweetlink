@@ -99,9 +99,7 @@ export function renderCommandResult(result: SweetLinkCommandResult): void {
 
 const hasCommandResultData = (
   value: SweetLinkCommandResult
-): value is SweetLinkCommandResult & { readonly data: unknown } => {
-  return typeof value === 'object' && value !== null && 'data' in value;
-};
+): value is SweetLinkCommandResult & { readonly data: unknown } => typeof value === 'object' && value !== null && 'data' in value;
 
 /** Formats unknown result payloads safely for logging. */
 export function formatResultData(value: unknown): string {

@@ -29,6 +29,10 @@ vi.mock('../../src/env', () => ({
   sweetLinkDebug: true,
 }));
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 vi.mock('../../src/util/errors', () => ({
   isErrnoException: (value: unknown): value is NodeJS.ErrnoException =>
     typeof value === 'object' &&
@@ -86,7 +90,7 @@ describe('ensureBackgroundDevtoolsListener', () => {
     const child = createChildProcess(4321);
     spawnMock.mockReturnValue(child);
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await ensureBackgroundDevtoolsListener({ sessionId: 'session-123' });
 
@@ -123,7 +127,7 @@ describe('ensureBackgroundDevtoolsListener', () => {
   it('logs a warning when the listener child emits an error', async () => {
     readLocalEnvStringMock.mockReturnValue('0');
     readFileMock.mockRejectedValue(createErrno('ENOENT'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const child = {
       pid: 0,
@@ -146,7 +150,7 @@ describe('ensureBackgroundDevtoolsListener', () => {
   it('warns when the pid file cannot be read', async () => {
     readLocalEnvStringMock.mockReturnValue('0');
     readFileMock.mockRejectedValue(new Error('permission denied'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     spawnMock.mockReturnValue(createChildProcess(1234));
 
@@ -160,7 +164,7 @@ describe('ensureBackgroundDevtoolsListener', () => {
     readLocalEnvStringMock.mockReturnValue('0');
     readFileMock.mockResolvedValue('101');
     rmMock.mockRejectedValue(createErrno('EACCES'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     spawnMock.mockReturnValue(createChildProcess(888));
 

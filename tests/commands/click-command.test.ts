@@ -1,6 +1,10 @@
 import { Command } from 'commander';
 import { describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const readCommandOptionsMock = vi.fn();
 const resolveConfigMock = vi.fn();
 const resolveSessionIdMock = vi.fn();
@@ -67,7 +71,7 @@ describe('registerClickCommand', () => {
     resolvePromptOptionMock.mockReturnValue(undefined);
     analyzeConsoleWithCodexMock.mockResolvedValue(false);
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await program.parseAsync(['click', 'hint', '--selector', '#login'], { from: 'user' });
 
@@ -95,7 +99,7 @@ describe('registerClickCommand', () => {
     resolvePromptOptionMock.mockReturnValue('Explain errors');
     analyzeConsoleWithCodexMock.mockResolvedValue(true);
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await program.parseAsync(['click', 'session-2', '--selector', '#submit', '--prompt', 'Explain errors'], {
       from: 'user',

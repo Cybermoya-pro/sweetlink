@@ -1,9 +1,12 @@
+import { regex } from 'arkregex';
 import { SWEETLINK_CLI_EXP_SECONDS, signSweetLinkToken } from '../shared/src/index.js';
 import { resolveSweetLinkSecret, type SweetLinkSecretResolution } from '../shared/src/node.js';
 import { fetchJson } from './http.js';
 import type { CachedCliTokenSource, CliConfig } from './types.js';
 import { describeAppForPrompt } from './util/app-label.js';
 import { describeUnknown } from './util/errors.js';
+
+const TRAILING_SLASH_PATTERN = regex.as('/$');
 
 interface CachedCliToken {
   readonly token: string;
@@ -26,7 +29,7 @@ export async function fetchCliToken(config: CliConfig): Promise<string> {
   if (config.adminApiKey) {
     try {
       const response = await fetchJson<{ accessToken: string; expiresAt: number }>(
-        `${config.appBaseUrl.replace(/\/$/, '')}/api/admin/sweetlink/cli-token`,
+        `${config.appBaseUrl.replace(TRAILING_SLASH_PATTERN, '')}/api/admin/sweetlink/cli-token`,
         {
           method: 'POST',
           headers: {

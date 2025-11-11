@@ -18,6 +18,7 @@ export async function connectPuppeteerBrowser(
   const totalAttempts = Math.max(1, attempts);
   for (let index = 0; index < totalAttempts; index += 1) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: retries must connect sequentially.
       return await puppeteer.connect({
         browserURL,
         defaultViewport: null,
@@ -40,6 +41,7 @@ export async function resolvePuppeteerPage(
 ): Promise<PuppeteerPage | null> {
   const attempts = 10;
   for (let attemptIndex = 0; attemptIndex < attempts; attemptIndex += 1) {
+    // biome-ignore lint/performance/noAwaitInLoops: polling tabs sequentially avoids racing stale page handles.
     const pages = await browser.pages();
     const match = pages.find((page) => {
       try {
@@ -60,10 +62,11 @@ export async function resolvePuppeteerPage(
 export async function navigatePuppeteerPage(
   page: PuppeteerPage,
   targetUrl: string,
-  attempts: number = 2
+  attempts = 2
 ): Promise<boolean> {
   for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: navigation retries must happen sequentially.
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: PUPPETEER_NAVIGATION_TIMEOUT_MS });
       return true;
     } catch (error) {

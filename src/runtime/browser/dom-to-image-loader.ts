@@ -11,9 +11,7 @@ type GlobalDomToImageContext = Omit<typeof globalThis, 'document' | 'location'> 
   __sweetlinkDomToImagePromise?: Promise<DomToImageModule>;
 };
 
-const resolveGlobal = (context: GlobalDomToImageContext): DomToImageModule | null => {
-  return context.domtoimage ?? context.domToImage ?? context.domtoImage ?? null;
-};
+const resolveGlobal = (context: GlobalDomToImageContext): DomToImageModule | null => context.domtoimage ?? context.domToImage ?? context.domtoImage ?? null;
 
 const SCRIPT_URL = '/sweetlink/dom-to-image-more.global.js';
 

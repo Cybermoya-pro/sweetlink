@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* mute console output in tests */
+};
+
 const existsSyncMock = vi.fn();
 const readFileSyncMock = vi.fn();
 
@@ -73,7 +77,7 @@ describe('maybeInstallMkcertDispatcher', () => {
     readFileSyncMock.mockImplementation(() => {
       throw new Error('boom');
     });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     maybeInstallMkcertDispatcher();
 
@@ -109,7 +113,7 @@ describe('ensureDevStackRunning', () => {
     const childProcess = { unref: vi.fn() };
     spawnMock.mockReturnValue(childProcess);
     delayMock.mockResolvedValue(undefined);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await ensureDevStackRunning(new URL('https://app.example.dev/timeline'), {
       repoRoot: '/repo',
@@ -132,7 +136,7 @@ describe('ensureDevStackRunning', () => {
 
   it('warns when the dev stack is offline and no start command is configured', async () => {
     fetchMock.mockRejectedValue(Object.assign(new Error('ECONNREFUSED'), { name: 'Error' }));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     await ensureDevStackRunning(new URL('https://app.example.dev'), { repoRoot: '/repo' });
 

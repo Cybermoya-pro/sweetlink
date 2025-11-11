@@ -29,6 +29,4 @@ export const readLocalEnvString = (key: string): string | null => {
 };
 
 /** Extracts typed Commander options while preserving globals. */
-export const readCommandOptions = <T extends object>(command: Command): T => {
-  return typeof command.optsWithGlobals === 'function' ? command.optsWithGlobals<T>() : command.opts<T>();
-};
+export const readCommandOptions = <T extends object>(command: Command): T => typeof command.optsWithGlobals === 'function' ? command.optsWithGlobals<T>() : command.opts<T>();

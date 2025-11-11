@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SweetLinkConsoleDump, SweetLinkSessionSummary } from '../src/runtime/session';
+/* biome-ignore lint/performance/noNamespaceImport: tests need the namespace to spy on smoke runtime functions dynamically. */
 import * as SmokeRuntime from '../src/runtime/smoke';
 
 const sessionModuleMocks = vi.hoisted(() => ({

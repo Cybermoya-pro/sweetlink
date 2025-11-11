@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { compact } from 'es-toolkit';
 import {
   type Browser,
@@ -43,12 +44,15 @@ const isDevToolsResponse = (value: unknown): value is DevToolsResponse => {
   return true;
 };
 
+const ECONNREFUSED_PATTERN = regex.as('ECONNREFUSED');
+
 export async function collectBootstrapDiagnostics(
   devtoolsUrl: string,
   candidates: readonly string[]
 ): Promise<SweetLinkBootstrapDiagnostics | null> {
   for (const candidate of candidates) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: stop after the first tab that yields diagnostics.
       const result = await evaluateInDevToolsTab(
         devtoolsUrl,
         candidate,
@@ -119,19 +123,25 @@ export async function collectBootstrapDiagnostics(
 }
 
 export async function discoverDevToolsEndpoints(): Promise<string[]> {
-  const endpoints: string[] = [];
+  const ports: number[] = [];
   for (let port = DEVTOOLS_PORT_SCAN_START; port <= DEVTOOLS_PORT_SCAN_END; port += 1) {
-    const baseUrl = `http://127.0.0.1:${port}`;
-    try {
-      const response = await fetch(`${baseUrl}/json/version`, { method: 'GET' });
-      if (response.ok) {
-        endpoints.push(baseUrl);
-      }
-    } catch {
-      /* ignore */
-    }
+    ports.push(port);
   }
-  return endpoints;
+  const results = await Promise.all(
+    ports.map(async (port) => {
+      const baseUrl = `http://127.0.0.1:${port}`;
+      try {
+        const response = await fetch(`${baseUrl}/json/version`, { method: 'GET' });
+        if (response.ok) {
+          return baseUrl;
+        }
+      } catch {
+        /* ignore */
+      }
+      return null;
+    })
+  );
+  return results.filter((url): url is string => typeof url === 'string');
 }
 
 export async function fetchDevToolsTabs(devtoolsUrl: string): Promise<DevToolsTabEntry[]> {
@@ -155,7 +165,7 @@ export async function fetchDevToolsTabs(devtoolsUrl: string): Promise<DevToolsTa
       const type = typeof record.type === 'string' ? record.type : undefined;
       const webSocketDebuggerUrl =
         typeof record.webSocketDebuggerUrl === 'string' ? record.webSocketDebuggerUrl : undefined;
-      if (!id || !url) {
+      if (!(id && url)) {
         return null;
       }
       return { id, title, url, type, webSocketDebuggerUrl };
@@ -164,10 +174,10 @@ export async function fetchDevToolsTabs(devtoolsUrl: string): Promise<DevToolsTa
 }
 
 export async function fetchDevToolsTabsWithRetry(devtoolsUrl: string, attempts = 5): Promise<DevToolsTabEntry[]> {
-  const ECONNREFUSED_PATTERN = /ECONNREFUSED/;
   const delayMs = 200;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: retries must run sequentially with backoff.
       const tabs = await fetchDevToolsTabs(devtoolsUrl);
       if (tabs.length > 0) {
         return tabs;
@@ -214,7 +224,8 @@ export async function evaluateInDevToolsTab(
   const pending = new Map<number, PendingEntry>();
 
   const sendCommand = <T = unknown>(method: string, params: Record<string, unknown> = {}) => {
-    const id = ++nextId;
+    nextId += 1;
+    const id = nextId;
     return new Promise<T>((resolve, reject) => {
       pending.set(id, {
         resolve: (value) => resolve(value as T),
@@ -228,6 +239,7 @@ export async function evaluateInDevToolsTab(
   const awaitDocumentReady = async () => {
     for (let attempt = 0; attempt < 50; attempt += 1) {
       try {
+        // biome-ignore lint/performance/noAwaitInLoops: document readiness must be polled sequentially.
         const result = await sendCommand<EvaluateResponse>('Runtime.evaluate', {
           expression: 'document.readyState',
           returnByValue: true,
@@ -284,7 +296,11 @@ export async function evaluateInDevToolsTab(
     };
 
     socket.addEventListener('open', () => {
-      void handleOpen();
+      handleOpen().catch((error) => {
+        if (sweetLinkDebug) {
+          console.warn('DevTools open handler failed before evaluation began.', error);
+        }
+      });
     });
 
     socket.addEventListener('message', (event) => {

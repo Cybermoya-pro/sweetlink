@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const mkdirMock = vi.fn();
 const readFileMock = vi.fn();
 const writeFileMock = vi.fn();
@@ -21,7 +25,7 @@ vi.mock('node:os', () => ({
 type ListenerMap = Record<string, Array<(payload?: unknown) => void>>;
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
-  public url: string;
+  url: string;
   private listeners: ListenerMap = {};
   constructor(url: string) {
     this.url = url;
@@ -162,7 +166,7 @@ describe('cleanupControlledChromeRegistry', () => {
       ])
     );
     readdirMock.mockResolvedValue(['sweetlink-chrome-9222-junk', 'sweetlink-chrome-9555-temp']);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await cleanupControlledChromeRegistry('http://localhost:9222');
 

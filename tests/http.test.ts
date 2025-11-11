@@ -1,4 +1,8 @@
+import { regex } from 'arkregex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const SESSIONS_HINT_PATTERN = regex.as('Hint: run `pnpm sweetlink sessions`');
+const ECONNRESET_PATTERN = regex.as(String.raw`cause: \{ errno: 'ECONNRESET', code: 'ECONNRESET' \}`);
 
 const fetchMock = vi.fn();
 // @ts-expect-error override global fetch for tests
@@ -36,7 +40,7 @@ describe('fetchJson', () => {
     (networkError as Error).cause = new Error('ECONNREFUSED');
     fetchMock.mockRejectedValueOnce(networkError);
 
-    await expect(fetchJson('https://api.example.dev/fail')).rejects.toThrow(/Hint: run `pnpm sweetlink sessions`/);
+    await expect(fetchJson('https://api.example.dev/fail')).rejects.toThrow(SESSIONS_HINT_PATTERN);
   });
 
   it('falls back to status text when the error payload is not JSON', async () => {
@@ -44,7 +48,7 @@ describe('fetchJson', () => {
       ok: false,
       status: 500,
       statusText: 'Server Error',
-      json: async () => {
+      json: () => {
         throw new Error('invalid json');
       },
     });
@@ -57,8 +61,6 @@ describe('fetchJson', () => {
     (error as Error & { cause?: unknown }).cause = { errno: 'ECONNRESET', code: 'ECONNRESET' };
     fetchMock.mockRejectedValueOnce(error);
 
-    await expect(fetchJson('https://api.example.dev/cause')).rejects.toThrow(
-      /cause: \{ errno: 'ECONNRESET', code: 'ECONNRESET' \}/
-    );
+    await expect(fetchJson('https://api.example.dev/cause')).rejects.toThrow(ECONNRESET_PATTERN);
   });
 });

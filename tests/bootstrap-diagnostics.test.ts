@@ -2,6 +2,10 @@ import os from 'node:os';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SweetLinkBootstrapDiagnostics } from '../src/index';
 
+const noop = () => {
+  /* mute console in tests */
+};
+
 let diagnosticsContainBlockingIssues: typeof import('../src/index')['diagnosticsContainBlockingIssues'];
 let logBootstrapDiagnostics: typeof import('../src/index')['logBootstrapDiagnostics'];
 let formatPathForDisplay: typeof import('../src/index')['formatPathForDisplay'];
@@ -55,7 +59,7 @@ describe('diagnosticsContainBlockingIssues', () => {
 
 describe('logBootstrapDiagnostics', () => {
   it('logs baseline diagnostics and console errors', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(noop);
     const diagnostics: SweetLinkBootstrapDiagnostics = {
       readyState: 'interactive',
       autoFlag: true,
@@ -80,7 +84,7 @@ describe('logBootstrapDiagnostics', () => {
   });
 
   it('limits output to 100 lines and reports truncation', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(noop);
     const overlayText = Array.from({ length: 120 }, (_, index) => `Overlay line ${index + 1}`).join('\n');
     const diagnostics: SweetLinkBootstrapDiagnostics = {
       readyState: 'loading',

@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* silence expected warnings in tests */
+};
+
 const mocks = vi.hoisted(() => ({
   state: {
     throwPuppeteerImport: false,
@@ -115,7 +119,7 @@ describe('attemptTwitterOauthAutoAccept', () => {
   });
 
   it('warns when an automation script cannot be resolved', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const attemptTwitterOauthAutoAccept = await loadAttemptTwitterOauthAutoAccept();
 
     const result = await attemptTwitterOauthAutoAccept({
@@ -167,7 +171,7 @@ describe('attemptTwitterOauthAutoAccept', () => {
 
   it('only warns once per missing script path', async () => {
     const attemptTwitterOauthAutoAccept = await loadAttemptTwitterOauthAutoAccept();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const missingPath = path.join(fixturesDir, 'missing-handler-two.ts');
 
     await attemptTwitterOauthAutoAccept({
@@ -190,7 +194,7 @@ describe('attemptTwitterOauthAutoAccept', () => {
 
   it('warns when a script fails to export an authorize function', async () => {
     const attemptTwitterOauthAutoAccept = await loadAttemptTwitterOauthAutoAccept();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const result = await attemptTwitterOauthAutoAccept({
       devtoolsUrl: 'http://localhost:9222',

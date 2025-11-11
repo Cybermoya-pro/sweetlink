@@ -3,6 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 vi.mock('../../src/env', () => ({
   sweetLinkDebug: false,
 }));
@@ -59,8 +63,8 @@ describe('renderCommandResult', () => {
 
   beforeEach(() => {
     process.exitCode = undefined;
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(noop);
     localeSpy = vi.spyOn(Date.prototype, 'toLocaleTimeString').mockReturnValue('00:00:00');
   });
 

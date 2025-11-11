@@ -30,6 +30,7 @@
     "@types/ws": "^8.18.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
+    "ultracite": "^6.3.2",
     "vitest": "^4.0.8"
   },
   "scripts": {

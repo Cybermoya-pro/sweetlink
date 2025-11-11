@@ -20,7 +20,7 @@ describe('fetchCliToken caching', () => {
 
   it('avoids repeated admin API calls once a secret-backed token is cached', async () => {
     const apiAttempts: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
       apiAttempts.push({ input, init });
       return {
         ok: false,
@@ -50,7 +50,7 @@ describe('fetchCliToken caching', () => {
 
   it('reuses locally signed tokens when no admin key is supplied', async () => {
     let fetchInvocations = 0;
-    globalThis.fetch = (async () => {
+    globalThis.fetch = (() => {
       fetchInvocations += 1;
       throw new Error('fetch should not be invoked when adminApiKey is missing');
     }) as typeof fetch;

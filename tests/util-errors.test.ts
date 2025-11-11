@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-async function importErrorUtils() {
+const noop = () => {
+  /* suppress console during tests */
+};
+
+function importErrorUtils() {
   return import('../src/util/errors');
 }
 
@@ -38,7 +42,7 @@ describe('error utilities', () => {
 
   it('suppresses debug logging when SWEETLINK_DEBUG is disabled', async () => {
     vi.stubEnv('SWEETLINK_DEBUG', '0');
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const { logDebugError } = await importErrorUtils();
     logDebugError('context', new Error('boom'));
     expect(warnSpy).not.toHaveBeenCalled();
@@ -46,7 +50,7 @@ describe('error utilities', () => {
 
   it('emits debug logs with the formatted error when SWEETLINK_DEBUG=1', async () => {
     vi.stubEnv('SWEETLINK_DEBUG', '1');
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
     const { logDebugError } = await importErrorUtils();
     const error = new Error('unexpected');
     logDebugError('session handshake', error);

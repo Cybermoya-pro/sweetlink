@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +17,8 @@ import {
 import type { SweetLinkConsoleDump } from './session.js';
 import { executeRunScriptCommand, fetchSessionSummaries, getSessionSummaryById } from './session.js';
 import { buildWaitCandidateUrls, configurePathRedirects, urlsRoughlyMatch } from './url.js';
+
+const ABSOLUTE_URL_PATTERN = regex.as('^https?:', 'i');
 
 const normalizeRouteList = (input: unknown): string[] => {
   if (typeof input === 'string') {
@@ -130,7 +133,7 @@ const normalizeRoutePath = (route: string): string => {
   if (!route) {
     return '/';
   }
-  if (/^https?:/i.test(route)) {
+  if (ABSOLUTE_URL_PATTERN.test(route)) {
     try {
       const parsed = new URL(route);
       return parsed.pathname || '/';
@@ -147,7 +150,7 @@ const normalizeRoutePath = (route: string): string => {
 };
 
 export const buildSmokeRouteUrl = (base: URL, route: string): URL => {
-  if (/^https?:/i.test(route)) {
+  if (ABSOLUTE_URL_PATTERN.test(route)) {
     try {
       const parsed = new URL(route);
       parsed.searchParams.set('sweetlink', 'auto');
@@ -223,6 +226,7 @@ export const triggerSweetLinkCliAuto = async (devtoolsUrl: string, candidateUrl:
 
   for (const candidate of candidates) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: evaluate each candidate sequentially until one succeeds.
       await evaluateInDevToolsTab(devtoolsUrl, candidate, expression);
       break;
     } catch (error) {
@@ -252,6 +256,7 @@ export const ensureSweetLinkSessionConnected = async (params: {
 
   while (Date.now() < deadline) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: polling for a session must remain sequential.
       const summary = await getSessionSummaryById(params.config, params.token, activeSessionId);
       if (summary && summary.socketState === 'open') {
         return true;
@@ -298,6 +303,7 @@ export const waitForSmokeRouteReady = async (params: {
 
   while (Date.now() < deadline) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: retries rely on sequential collection attempts.
       const diagnostics = await collectBootstrapDiagnostics(params.devtoolsUrl, candidates);
       if (diagnostics) {
         lastDiagnostics = diagnostics;
@@ -414,7 +420,7 @@ export const consoleEventIndicatesAuthIssue = (event: SweetLinkConsoleDump): boo
   if (level && level !== 'error' && level !== 'warn' && level !== 'assert') {
     return false;
   }
-  if (!event || !Array.isArray(event.args)) {
+  if (!(event && Array.isArray(event.args))) {
     return false;
   }
   for (const value of event.args) {

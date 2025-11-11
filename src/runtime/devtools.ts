@@ -1,3 +1,4 @@
+/* biome-ignore lint/performance/noBarrelFile: devtools index re-exports helpers for public API stability. */
 export * from './devtools/background.js';
 export * from './devtools/cdp.js';
 export * from './devtools/config.js';

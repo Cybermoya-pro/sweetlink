@@ -31,7 +31,7 @@ const parseStoredValue = (raw: string | null): SweetLinkStoredSession | null => 
     const expiresAtMs =
       typeof parsed.expiresAtMs === 'number' && Number.isFinite(parsed.expiresAtMs) ? parsed.expiresAtMs : null;
     const codename = typeof parsed.codename === 'string' ? parsed.codename : null;
-    if (!sessionId || !sessionToken || !socketUrl) {
+    if (!((sessionId && sessionToken ) && socketUrl)) {
       return null;
     }
     return {

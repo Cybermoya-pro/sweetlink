@@ -1,4 +1,7 @@
+import { regex } from 'arkregex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const MULTIPLE_SESSIONS_PATTERN = regex.as('Multiple SweetLink sessions');
 import type { CliConfig } from '../../src/types';
 
 const fetchJsonMock = vi.fn();
@@ -113,7 +116,7 @@ describe('resolveSessionIdFromHint', () => {
       ],
     });
 
-    await expect(resolveSessionIdFromHint('beta', config)).rejects.toThrow(/Multiple SweetLink sessions/);
+    await expect(resolveSessionIdFromHint('beta', config)).rejects.toThrow(MULTIPLE_SESSIONS_PATTERN);
   });
 });
 

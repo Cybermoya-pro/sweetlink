@@ -1,5 +1,9 @@
 import { Command } from 'commander';
+import { regex } from 'arkregex';
 import { describe, expect, it, vi } from 'vitest';
+
+const OAUTH_HANDLER_PATTERN = regex.as(String.raw`handlers\/oauth\.ts$`);
+const FILE_OAUTH_PATTERN = regex.as(String.raw`file-oauth\.ts$`);
 
 const readOptionsMock = vi.fn();
 const loadFileConfigMock = vi.fn();
@@ -59,7 +63,7 @@ describe('readRootProgramOptions', () => {
     expect(options.appUrl).toBe('https://cli.app.dev');
     expect(options.daemonUrl).toBe('https://cli.daemon.dev');
     expect(options.adminKey).toBe('cli-admin');
-    expect(options.oauthScriptPath).toMatch(/handlers\/oauth\.ts$/);
+    expect(options.oauthScriptPath).toMatch(OAUTH_HANDLER_PATTERN);
     expect(options.appLabel).toBe('CLI Label');
     expect(options.servers).toHaveLength(1);
   });
@@ -81,7 +85,7 @@ describe('readRootProgramOptions', () => {
 
     expect(options.appUrl).toBe('https://file.app.dev:5173/');
     expect(options.daemonUrl).toBe('https://file.daemon.dev');
-    expect(options.oauthScriptPath).toMatch(/file-oauth\.ts$/);
+    expect(options.oauthScriptPath).toMatch(FILE_OAUTH_PATTERN);
     expect(options.adminKey).toBe('env-local');
   });
 });

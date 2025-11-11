@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchMock = vi.fn();
@@ -18,10 +19,16 @@ vi.mock('../../src/util/time', () => ({
 
 import type { ConsoleMessage, JSHandle, Page } from 'playwright-core';
 
+const UNEXPECTED_RESPONSE_PATTERN = regex.as('unexpected');
+const MISSING_DEBUGGER_PATTERN = regex.as('does not expose');
+
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
   private listeners: Record<string, Array<(payload?: unknown) => void>> = {};
-  constructor(public url: string) {
+  readonly url: string;
+
+  constructor(url: string) {
+    this.url = url;
     MockWebSocket.instances.push(this);
     queueMicrotask(() => this.emit('open'));
   }
@@ -129,7 +136,7 @@ describe('fetchDevToolsTabs', () => {
   it('throws when payload is malformed', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
-    await expect(fetchDevToolsTabs('http://localhost:9222')).rejects.toThrow(/unexpected/);
+    await expect(fetchDevToolsTabs('http://localhost:9222')).rejects.toThrow(UNEXPECTED_RESPONSE_PATTERN);
   });
 });
 
@@ -237,7 +244,7 @@ describe('evaluateInDevToolsTab', () => {
     });
 
     await expect(evaluateInDevToolsTab('http://localhost:9222', 'https://missing.dev', '1+1')).rejects.toThrow(
-      /does not expose/
+      MISSING_DEBUGGER_PATTERN
     );
   });
 });

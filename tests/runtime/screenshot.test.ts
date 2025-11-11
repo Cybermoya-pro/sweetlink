@@ -6,13 +6,15 @@ import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../
 import type { ScreenshotFallbackContext } from '../../src/runtime/screenshot';
 import type { CliConfig } from '../../src/types';
 
-const mocks = vi.hoisted(() => {
-  return {
+const noop = () => {
+  /* suppress console noise during tests */
+};
+
+const mocks = vi.hoisted(() => ({
     runCodexImagePrompt: vi.fn<(path: string, prompt: string) => Promise<number>>(),
     runCodexTextPrompt: vi.fn<(prompt: string) => Promise<number>>(),
     fetchJson: vi.fn(),
-  };
-});
+  }));
 
 vi.mock('../../src/codex', () => ({
   runCodexImagePrompt: mocks.runCodexImagePrompt,
@@ -40,7 +42,7 @@ describe('maybeDescribeScreenshot', () => {
 
   it('delegates to Codex when a prompt is supplied', async () => {
     mocks.runCodexImagePrompt.mockResolvedValue(0);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
 
     await maybeDescribeScreenshot('What changed?', '/tmp/screenshot.jpg', { appLabel: 'Insights Portal' });
 
@@ -57,7 +59,7 @@ describe('maybeDescribeScreenshot', () => {
     const error = new Error('not found');
     (error as NodeJS.ErrnoException).code = 'ENOENT';
     mocks.runCodexImagePrompt.mockRejectedValue(error);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     await maybeDescribeScreenshot('Explain the issue', '/tmp/screenshot.jpg');
 
@@ -67,7 +69,7 @@ describe('maybeDescribeScreenshot', () => {
 
   it('logs when Codex exits with a non-zero status code', async () => {
     mocks.runCodexImagePrompt.mockResolvedValue(3);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     await maybeDescribeScreenshot('Summarize the graph', '/tmp/screenshot.jpg');
 
@@ -90,7 +92,7 @@ describe('maybeAnalyzeConsoleWithPrompt', () => {
 
   it('records console lines and returns true when Codex succeeds', async () => {
     mocks.runCodexTextPrompt.mockResolvedValue(0);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
     const events = [{ id: 'a', timestamp: 1000, level: 'error', args: ['boom'] }];
 
     const result = await maybeAnalyzeConsoleWithPrompt('Why failed?', '#cta', events, { appLabel: 'Ops Console' });
@@ -104,7 +106,7 @@ describe('maybeAnalyzeConsoleWithPrompt', () => {
 
   it('warns and returns false when Codex exits with a failure code', async () => {
     mocks.runCodexTextPrompt.mockResolvedValue(2);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const result = await maybeAnalyzeConsoleWithPrompt('Still broken?', '#cta', []);
 
@@ -118,7 +120,7 @@ describe('maybeAnalyzeConsoleWithPrompt', () => {
     const error = new Error('missing');
     (error as NodeJS.ErrnoException).code = 'ENOENT';
     mocks.runCodexTextPrompt.mockRejectedValue(error);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const result = await maybeAnalyzeConsoleWithPrompt('Need logs', '#cta', []);
 
@@ -130,7 +132,7 @@ describe('maybeAnalyzeConsoleWithPrompt', () => {
   it('logs when Codex fails for other reasons', async () => {
     const error = new Error('network timeout');
     mocks.runCodexTextPrompt.mockRejectedValue(error);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     const result = await maybeAnalyzeConsoleWithPrompt('Need context', '#cta', []);
 
@@ -144,7 +146,7 @@ describe('persistScreenshotResult', () => {
   it('writes screenshots to disk and reports metadata', async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'sweetlink-shot-'));
     const outputPath = path.join(tempDir, 'saved.jpg');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(noop);
     const payload: SweetLinkCommandResult = {
       ok: true,
       commandId: 'cmd-3',
@@ -247,7 +249,7 @@ describe('tryHtmlToImageFallback', () => {
     };
     mocks.fetchJson.mockResolvedValue({ result: successResult });
     mocks.runCodexImagePrompt.mockResolvedValue(0);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     try {
       const outcome = await tryHtmlToImageFallback({ ...baseContext, outputPath });
@@ -277,7 +279,7 @@ describe('tryHtmlToImageFallback', () => {
       error: 'Renderer crashed',
     };
     mocks.fetchJson.mockResolvedValue({ result: failureResult });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     try {
       const outcome = await tryHtmlToImageFallback({

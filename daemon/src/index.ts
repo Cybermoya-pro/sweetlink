@@ -294,8 +294,8 @@ async function main() {
     }
 
     const rawSecretResolution = await resolveSweetLinkSecret({ autoCreate: true });
-    const { secret, source, path } = assertSecretResolution(rawSecretResolution);
-    log(`SweetLink secret source: ${source}${path ? ` (${path})` : ''}`);
+    const { secret, source, path: secretPath } = assertSecretResolution(rawSecretResolution);
+    log(`SweetLink secret source: ${source}${secretPath ? ` (${secretPath})` : ''}`);
 
     ensureCertificates();
     const { cert, key } = loadCertificates();
@@ -303,7 +303,9 @@ async function main() {
     const state = new SweetLinkState(secret);
 
     const server = createHttpsServer({ key, cert }, (req, res) => {
-      void handleHttpRequest(state, req, res);
+      handleHttpRequest(state, req, res).catch((error) => {
+        console.warn('SweetLink daemon request handler failed:', getErrorMessage(error));
+      });
     });
     const wsServer = new WebSocketServer({ server, path: SWEETLINK_WS_PATH });
     wsServer.on('connection', (socket) => state.handleSocket(socket));
@@ -394,10 +396,14 @@ class SweetLinkState {
             this.#handleConsoleEvents(message.sessionId, message.events);
             break;
           }
+          default: {
+            console.warn(`SweetLink socket received unsupported message: ${message.kind as string}`);
+            break;
+          }
         }
       } catch (error) {
-        const message = getErrorMessage(error);
-        console.warn(`SweetLink socket error: ${message}`);
+        const errorMessage = getErrorMessage(error);
+        console.warn(`SweetLink socket error: ${errorMessage}`);
       }
     });
 
@@ -441,7 +447,7 @@ class SweetLinkState {
     });
   }
 
-  async sendCommand(sessionId: string, rawCommand: CommandWithoutId, timeoutMs = 15_000): Promise<CommandResult> {
+  sendCommand(sessionId: string, rawCommand: CommandWithoutId, timeoutMs = 15_000): Promise<CommandResult> {
     const session = this.#sessions.get(sessionId);
     if (!session) {
       throw new Error('Session not found or offline');
@@ -537,8 +543,8 @@ class SweetLinkState {
       socket.send(JSON.stringify(metadataMessage));
       log(`Sent metadata for session ${sessionId} [${metadata.codename}]`);
     } catch (error) {
-      const message = getErrorMessage(error);
-      console.warn(`[SweetLink] Failed to send session metadata for ${sessionId}: ${message}`);
+      const errorMessage = getErrorMessage(error);
+      console.warn(`[SweetLink] Failed to send session metadata for ${sessionId}: ${errorMessage}`);
     }
     log(`Registered SweetLink session ${sessionId} [${metadata.codename}] (${metadata.title || metadata.url})`);
     return sessionId;
@@ -566,7 +572,7 @@ class SweetLinkState {
 
   #handleConsoleEvents(sessionId: string, events: readonly ConsoleEvent[]) {
     const session = this.#sessions.get(sessionId);
-    if (!session || !events?.length) {
+    if (!(session && events?.length)) {
       return;
     }
     session.consoleBuffer.push(...events);

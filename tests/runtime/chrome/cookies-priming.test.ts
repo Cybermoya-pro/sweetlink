@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const noop = () => {
+  /* suppress console noise */
+};
+
 const resolvePageMock = vi.fn();
 const navigatePageMock = vi.fn();
 const waitForReadyMock = vi.fn();
@@ -71,7 +75,7 @@ describe('primeControlledChromeCookies', () => {
     collectChromeCookiesMock.mockResolvedValue([{ name: 'auth', value: '1' }]);
     connectMock.mockRejectedValue(new Error('offline'));
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(noop);
 
     await primeControlledChromeCookies(
       {

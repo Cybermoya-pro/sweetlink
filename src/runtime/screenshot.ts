@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { writeFile } from 'node:fs/promises';
 import type { SweetLinkCommandResult, SweetLinkScreenshotRenderer } from '../../shared/src/index.js';
 import { runCodexImagePrompt, runCodexTextPrompt } from '../codex.js';
@@ -7,6 +8,8 @@ import { describeAppForPrompt } from '../util/app-label.js';
 import { extractEventMessage, isErrnoException } from '../util/errors.js';
 import { formatConsoleArg } from './devtools.js';
 import type { SweetLinkConsoleDump } from './session.js';
+
+const TRAILING_SLASH_PATTERN = regex.as('/$');
 
 export interface DevToolsCaptureOptions {
   readonly devtoolsUrl: string;
@@ -174,7 +177,7 @@ export async function attemptDevToolsCapture(
   options: DevToolsCaptureOptions
 ): Promise<{ width: number; height: number; sizeKb: number; renderer: 'puppeteer' } | null> {
   const { devtoolsUrl, sessionUrl, selector, quality, mode, outputPath } = options;
-  const normalizedUrl = devtoolsUrl.replace(/\/$/, '');
+  const normalizedUrl = devtoolsUrl.replace(TRAILING_SLASH_PATTERN, '');
 
   try {
     const versionResponse = await fetch(`${normalizedUrl}/json/version`, { method: 'GET' });

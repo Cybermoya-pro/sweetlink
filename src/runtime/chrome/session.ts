@@ -1,3 +1,4 @@
+import { regex } from 'arkregex';
 import { fetchJson } from '../../http.js';
 import type { CliConfig } from '../../types.js';
 import { logDebugError } from '../../util/errors.js';
@@ -5,10 +6,12 @@ import { delay } from '../../util/time.js';
 import { saveDevToolsConfig } from '../devtools.js';
 import { urlsRoughlyMatch } from '../url.js';
 
+const OPTIONAL_TRAILING_SLASH_PATTERN = regex.as('/?$');
+
 export async function signalSweetLinkBootstrap(devtoolsUrl: string, targetUrl: string): Promise<void> {
   try {
     const payload = { devtoolsUrl, targetUrl };
-    await fetch(`${devtoolsUrl.replace(/\/?$/, '')}/json/version`, { method: 'GET' });
+    await fetch(`${devtoolsUrl.replace(OPTIONAL_TRAILING_SLASH_PATTERN, '')}/json/version`, { method: 'GET' });
     await fetch(`${targetUrl}/sweetlink/bootstrap`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,6 +36,7 @@ export async function waitForSweetLinkSession(params: {
   const deadline = Date.now() + params.timeoutSeconds * 1000;
   while (Date.now() < deadline) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: polling for sessions must be sequential.
       const response = await fetchJson<{ sessions: Array<{ sessionId: string; url: string }> }>(
         `${params.config.daemonBaseUrl}/sessions`,
         {

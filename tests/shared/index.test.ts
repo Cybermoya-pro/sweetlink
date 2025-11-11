@@ -1,4 +1,8 @@
+import { regex } from 'arkregex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const SCOPE_MISMATCH_PATTERN = regex.as('scope mismatch');
+const TOKEN_EXPIRED_PATTERN = regex.as('expired');
 
 import {
   createSweetLinkCommandId,
@@ -56,17 +60,17 @@ describe('SweetLink token helpers', () => {
         token,
         expectedScope: 'cli',
       })
-    ).toThrow(/scope mismatch/);
+    ).toThrow(SCOPE_MISMATCH_PATTERN);
 
     // Expired token check.
-    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000 + (SWEETLINK_SESSION_EXP_SECONDS + 30) * 1_000);
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000 + (SWEETLINK_SESSION_EXP_SECONDS + 30) * 1000);
     expect(() =>
       verifySweetLinkToken({
         secret: 'another-secret-value-0987654321',
         token,
         expectedScope: 'session',
       })
-    ).toThrow(/expired/);
+    ).toThrow(TOKEN_EXPIRED_PATTERN);
   });
 
   it('generates unique IDs for sessions and commands', () => {

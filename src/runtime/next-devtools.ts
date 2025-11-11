@@ -39,7 +39,7 @@ async function callNextDevtoolsTool(
       signal: controller.signal,
     });
     if (!response.ok) {
-      return undefined;
+      return ;
     }
     const raw = await response.text();
     const dataLine = raw
@@ -47,16 +47,16 @@ async function callNextDevtoolsTool(
       .map((line) => line.trim())
       .find((line) => line.startsWith('data:'));
     if (!dataLine) {
-      return undefined;
+      return ;
     }
     const payload = dataLine.slice(5).trim();
     if (!payload) {
-      return undefined;
+      return ;
     }
     return JSON.parse(payload);
   } catch (error) {
     logDebugError('Next DevTools call failed', error);
-    return undefined;
+    return ;
   } finally {
     clearTimeout(timeout);
   }

@@ -230,7 +230,7 @@ export function resolvePromptOption(options: { prompt?: string; question?: strin
     return trimmedQuestion;
   }
 
-  return undefined;
+  return ;
 }
 
 /** Builds a DOM click script scoped to the provided selector. */

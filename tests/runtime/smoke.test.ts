@@ -1,4 +1,7 @@
+import { regex } from 'arkregex';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const EMPTY_ENTRIES_PATTERN = regex.as(String.raw`"entries":\s*\[\]`);
 import type { CliConfig } from '../../src/types';
 import type { SweetLinkConsoleDump } from '../../src/runtime/session';
 
@@ -176,7 +179,7 @@ describe('smoke progress persistence', () => {
         ],
       })
     );
-    vi.spyOn(Date, 'now').mockReturnValue(5_000);
+    vi.spyOn(Date, 'now').mockReturnValue(5000);
 
     await saveSmokeProgressIndex('https://app.example.dev', ['dash'], 4);
     expect(writeFileMock).toHaveBeenCalledWith(
@@ -188,7 +191,7 @@ describe('smoke progress persistence', () => {
     await clearSmokeProgress('https://app.example.dev', ['dash']);
     expect(writeFileMock).toHaveBeenLastCalledWith(
       expect.any(String),
-      expect.stringMatching(/"entries":\s*\[\]/),
+      expect.stringMatching(EMPTY_ENTRIES_PATTERN),
       'utf8'
     );
   });

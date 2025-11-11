@@ -23,13 +23,13 @@ async function runCodexExec(args: string[], options: { stdin?: string } = {}): P
 }
 
 /** Asks Codex about a screenshot file. */
-export async function runCodexImagePrompt(imagePath: string, prompt: string): Promise<number> {
+export function runCodexImagePrompt(imagePath: string, prompt: string): Promise<number> {
   const payload = prompt.endsWith('\n') ? prompt : `${prompt}\n`;
   return runCodexExec(['-i', imagePath, '-'], { stdin: payload });
 }
 
 /** Asks Codex about a text payload. */
-export async function runCodexTextPrompt(prompt: string): Promise<number> {
+export function runCodexTextPrompt(prompt: string): Promise<number> {
   return runCodexExec([prompt]);
 }
 

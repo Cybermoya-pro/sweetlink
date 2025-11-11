@@ -32,7 +32,7 @@ export function createCommandExecutor(context: CommandExecutorContext): CommandE
   };
 }
 
-async function executeCommand(
+function executeCommand(
   command: SweetLinkCommand,
   context: CommandExecutorContext
 ): Promise<SweetLinkCommandResult> {
@@ -71,7 +71,7 @@ async function executeCommand(
       error: error_.message,
       stack: error_.stack,
     };
-    return result;
+    return Promise.resolve(result);
   }
 }
 
