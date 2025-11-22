@@ -1,8 +1,8 @@
+![SweetLink header](docs/assets/sweetlink-header.png)
+
 # SweetLink 🍭
 
 SweetLink is the agent-ready way to "connect your agent to your web app. Like Playwright, but it works in your current tab. Close the loop." It drives a real browser session through the SweetLink daemon so you can authenticate, capture screenshots, run smoke tests, and gather DevTools telemetry without wiring up a headless automation stack.
-
-> **Note:** This README is the canonical copy. When updating docs for the public `steipete/sweetlink` repository, edit here first and then sync the changes.
 
 ## Features
 
