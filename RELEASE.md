@@ -28,6 +28,6 @@
 
 6. **Post-publish**
    - [ ] Tag and push: `git tag v<version> && git push origin v<version>`.
-   - [ ] Create a GitHub release for `v<version>` with changelog bullets (no heading) and attach the tarball + checksums.
+   - [ ] Create a GitHub release for `v<version>` titled `SweetLink <version>`; body = changelog bullets (no heading); attach the tarball + checksums.
    - [ ] Smoke-test from a clean directory: `npx -y sweetlink@<version> --version`.
    - [ ] Promote or adjust dist-tags if needed (`npm dist-tag add sweetlink@<version> latest`).
